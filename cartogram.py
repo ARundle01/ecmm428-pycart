@@ -56,3 +56,15 @@ class Cartogram:
         del geodf["density"], geodf["rank"], geodf["cent"]
 
         return gpd.GeoDataFrame(geodf, geometry=new_geo)
+
+
+    def dorling(self):
+        pass
+
+
+    def rectangle(self):
+        pass
+
+
+    def fast_flow(self):
+        pass
