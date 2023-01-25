@@ -22,7 +22,7 @@ class Cartogram:
         else:
             self.id_field = id_field
 
-    def non_contiguous(self, position="centroid", anchor_rank=1, anchor_id=None):
+    def non_contiguous(self, position="centroid", size_value=1.0):
         geodf = self.gdf[[self.value_field, self.id_field, self.geo_field]].copy()
 
         geo = geodf[self.geo_field]
@@ -41,10 +41,7 @@ class Cartogram:
 
         anchor = geodf[geodf["rank"] == 1]["density"].values[0]
 
-        # for g in self.gdf.iterrows():
-        #     print(g[1]["Name"])
-
-        geodf["scale"] = (1.0 / np.power(anchor, 0.5)) * np.power(geodf[self.value_field] / geodf.area, 0.5)
+        geodf["scale"] = (1.0 / np.power(anchor, 0.5)) * np.power(geodf[self.value_field] / geodf.area, 0.5) * size_value
 
         new_geo = [
             scale(

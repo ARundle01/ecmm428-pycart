@@ -57,7 +57,6 @@ def init_geojson(map_type):
         features_df.drop(['OBJECTID', name_type, wales_name], axis=1, inplace=True)
         features_df.drop(to_remove, axis=0, inplace=True)
 
-        # TODO: Concatenate 2021 boundary for Northampton onto 2020 boundaries
         temp_lad = "./data/Dec2021/Local_Authority_Districts_(December_2021)_GB_BGC.geojson"
         temp_features, temp_code_type, temp_name_type = parse_geojson(temp_lad)
         temp_features_df = gpd.GeoDataFrame.from_features(temp_features)
@@ -78,7 +77,6 @@ def init_geojson(map_type):
 
 def to_int(x):
     return int(x.replace(',', ''))
-
 
 def parse_pop(fname):
     pop_df = pd.read_csv(fname)
@@ -116,7 +114,7 @@ if __name__ == '__main__':
     pop_df = parse_pop(pop)
 
     try:
-        places_df, features, code_type = init_geojson("countries")
+        places_df, features, code_type = init_geojson("lad")
     except NameError as e:
         print(e)
         exit(-1)
@@ -125,7 +123,7 @@ if __name__ == '__main__':
     geo_pop = places_df.merge(sub_pop, on=code_type)
 
     cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
-    non_con = cart.non_contiguous(position='centroid')
+    non_con = cart.non_contiguous(position='centroid', size_value=1.0)
 
     fig, ax = plt.subplots(1, figsize=(4, 4))
     ax.axis('equal')
