@@ -113,8 +113,9 @@ if __name__ == '__main__':
 
     pop_df = parse_pop(pop)
 
+    # 'countries' | 'regions' | 'cua' | 'lad'
     try:
-        places_df, features, code_type = init_geojson("lad")
+        places_df, features, code_type = init_geojson("cua")
     except NameError as e:
         print(e)
         exit(-1)
@@ -122,20 +123,38 @@ if __name__ == '__main__':
     sub_pop = get_sub_pop(pop_df, places_df, code_type)
     geo_pop = places_df.merge(sub_pop, on=code_type)
 
+    # londonless_geo_pop = geo_pop[geo_pop["Name"] != "LONDON"].reset_index(drop=True)
+
     cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
     non_con = cart.non_contiguous(position='centroid', size_value=1.0)
+    dorling = cart.dorling(iterations=256)
+
+    # borders = cartogram.shared_borders(geo_pop)
+    # knn_borders = cartogram.knn_borders(geo_pop)
+
+    # if 0 in knn_borders["focal"].values:
+    #     if 3 in knn_borders[knn_borders["focal"] == 0]["neighbor"].values:
+    #         print("it is in here")
+
+    # unique_borders = knn_borders.merge(
+    #     borders,
+    #     how='left',
+    #     indicator=True
+    # )
+
 
     fig, ax = plt.subplots(1, figsize=(4, 4))
     ax.axis('equal')
     ax.axis('off')
 
     geo_pop.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
-    non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
+    # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
+    dorling.plot(color='blue', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
 
     # places_df.plot(ax=ax, edgecolor='0', linewidth=0.1)
 
     # geo_pop.plot(column='Population', cmap=new_cmap, ax=ax, edgecolor='0', linewidth=0.1, legend=True)
-    # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
-    plt.savefig("map.png", dpi=1500)
+    ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
+    plt.savefig("map.png", dpi=2000)
 
 
