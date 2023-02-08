@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
     # 'countries' | 'regions' | 'cua' | 'lad'
     try:
-        places_df, features, code_type = init_geojson("cua")
+        places_df, features, code_type = init_geojson("regions")
     except NameError as e:
         print(e)
         exit(-1)
@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
     cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
     non_con = cart.non_contiguous(position='centroid', size_value=1.0)
-    dorling = cart.dorling(iterations=256)
+    dorling = cart.dorling(iterations=99)
 
     # borders = cartogram.shared_borders(geo_pop)
     # knn_borders = cartogram.knn_borders(geo_pop)
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     # places_df.plot(ax=ax, edgecolor='0', linewidth=0.1)
 
     # geo_pop.plot(column='Population', cmap=new_cmap, ax=ax, edgecolor='0', linewidth=0.1, legend=True)
-    ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
-    plt.savefig("map.png", dpi=2000)
+    # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
+    plt.savefig("map2.png", dpi=750)
 
 

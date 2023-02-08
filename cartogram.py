@@ -1,14 +1,11 @@
 from functools import partial
 
-import geojson
+import pyfftw
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 
 from shapely.affinity import scale, translate
-from shapely.geometry import Polygon
 from libpysal.weights import Rook, W, KNN, attach_islands
 
 
@@ -137,7 +134,8 @@ class Cartogram:
             #         ) / perimeter[idx]
             #     )
 
-            if idx in borders["focal"].values:
+            if (idx in borders["focal"].values) and (x.name in borders["neighbor"].values):
+            # if idx in borders["focal"].values:
                 if x.name in borders[borders["focal"] == idx]["neighbor"].values:
                     x["overlap"] = (
                         abs(x["overlap"]) * float(
@@ -265,7 +263,8 @@ class Cartogram:
             geometry=df.apply(lambda x: x["geometry"].buffer(x["radius"]), axis=1)
         )
 
-    def rectangle(self):
+
+    def diffusion(self):
         pass
 
 
