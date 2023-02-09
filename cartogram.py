@@ -114,7 +114,7 @@ class Cartogram:
         return gpd.GeoDataFrame(geodf, geometry=new_geo)
 
 
-    def dorling(self, ratio=0.4, friction=0.25, iterations=99):
+    def old_dorling(self, ratio=0.4, friction=0.25, iterations=99):
         def repel(x, row, xrepel, yrepel):
             if x["dist"] > 1.0:
                 xrepel -= (
@@ -134,8 +134,8 @@ class Cartogram:
             #         ) / perimeter[idx]
             #     )
 
-            if (idx in borders["focal"].values) and (x.name in borders["neighbor"].values):
-            # if idx in borders["focal"].values:
+            # if (idx in borders["focal"].values) and (x.name in borders["neighbor"].values):
+            if idx in borders["focal"].values:
                 if x.name in borders[borders["focal"] == idx]["neighbor"].values:
                     x["overlap"] = (
                         abs(x["overlap"]) * float(
@@ -262,6 +262,10 @@ class Cartogram:
             data=df.drop(columns=["geometry", "radius"]),
             geometry=df.apply(lambda x: x["geometry"].buffer(x["radius"]), axis=1)
         )
+
+
+    def dorling(self, ratio=0.4, friction=0.25, iterations=100):
+        pass
 
 
     def diffusion(self):

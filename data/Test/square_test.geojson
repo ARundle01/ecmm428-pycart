@@ -1,0 +1,10 @@
+{
+"type": "FeatureCollection",
+"name": "square_test",
+"features": [
+{ "type": "Feature", "properties": { "shape": "Rectangle", "name": "TL" }, "geometry": { "type": "Polygon", "coordinates": [[[-3.634135,50.446137],[-3.569522,50.446137],[-3.569522,50.486784],[-3.634135,50.486784],[-3.634135,50.446137]]] },"id": "cc9f2d96-4ab3-4c0b-a353-2c7581d2b5ae"},
+{ "type": "Feature", "properties": { "shape": "Rectangle", "name": "BL" }, "geometry": { "type": "Polygon", "coordinates": [[[-3.569522,50.446137],[-3.634135,50.446137],[-3.634135,50.407205],[-3.569522,50.407205],[-3.569522,50.446137]]] },"id": "44ca72e9-63d8-44c7-8780-61cd3f92e36d"},
+{ "type": "Feature", "properties": { "shape": "Rectangle", "name": "TR" }, "geometry": { "type": "Polygon", "coordinates": [[[-3.504629,50.446137],[-3.504629,50.486784],[-3.569522,50.486784],[-3.569522,50.446137],[-3.504629,50.446137]]] },"id": "a64e7c92-d9de-4e28-bcaa-90412eda30c0"},
+{ "type": "Feature", "properties": { "shape": "Rectangle", "name": "BR" }, "geometry": { "type": "Polygon", "coordinates": [[[-3.569522,50.407205],[-3.504629,50.407205],[-3.504629,50.446137],[-3.569522,50.446137],[-3.569522,50.407205]]] },"id": "23786ed9-237f-4e46-95f4-c17474114d89"}
+]
+}
