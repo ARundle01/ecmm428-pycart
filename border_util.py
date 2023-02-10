@@ -3,10 +3,9 @@ import numpy as np
 import pandas as pd
 
 from libpysal.weights import Queen, W, Kernel
-from libpysal.weights.adjtools import _get_W_and_alist
 
 
-def get_borders(gdf, geo_field="geometry"):
+def bad_borders(gdf, geo_field="geometry"):
     wq = Queen.from_dataframe(gdf)
 
     if len(wq.islands) > 0:
@@ -22,8 +21,6 @@ def get_borders(gdf, geo_field="geometry"):
 
         combined_W = W.from_adjlist(COMBINED)
 
-        checked_W, checked_alist = _get_W_and_alist(combined_W, COMBINED)
-
         weights = {
             idx: [
                 gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]).length
@@ -32,11 +29,12 @@ def get_borders(gdf, geo_field="geometry"):
             for idx, neighbors in combined_W.neighbors.items()
         }
 
-        # for idx, neighbors in combined_W.neighbors.items():
-        #     idx_weights = []
-        #     for nid in neighbors:
-        #         if gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]).length == 0:
-        #             print(f"{idx}: {nid}")
+        for idx, neighbors in combined_W.neighbors.items():
+            idx_weights = []
+            for nid in neighbors:
+                # if gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]).length == 0:
+                #     print(f"{idx}: {nid}")
+                print(gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]))
 
         # print(len(combined_W.neighbors.items()))
 
@@ -62,3 +60,35 @@ def get_borders(gdf, geo_field="geometry"):
     # }
     #
     # return W(queen.neighbors, weights).to_adjlist()
+
+
+def get_borders(gdf, geo_field="geometry"):
+    islands = None
+    wq = Queen.from_dataframe(gdf)
+
+    # if len(wq.islands) > 0:
+    #     islands = wq.islands
+    #
+    #     temp_gdf = gdf.drop(islands, axis=0)
+    #
+    #     WQ = wq.to_adjlist(drop_islands=True)
+    #     WQ.reset_index(inplace=True, drop=True)
+    #     wq = W.from_adjlist(WQ)
+    #
+    #     weights = {
+    #         idx: [
+    #             temp_gdf.loc[idx, geo_field].intersection(temp_gdf.loc[nid, geo_field]).length
+    #             for nid in neighbors
+    #         ]
+    #         for idx, neighbors in wq.neighbors.items()
+    #     }
+    # else:
+    weights = {
+        idx: [
+            gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]).length
+            for nid in neighbors
+        ]
+        for idx, neighbors in wq.neighbors.items()
+    }
+
+    return W(wq.neighbors, weights).to_adjlist(), islands

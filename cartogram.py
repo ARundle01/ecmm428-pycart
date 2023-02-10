@@ -1,5 +1,7 @@
 from functools import partial
 
+import border_util
+
 import pyfftw
 import geopandas as gpd
 import numpy as np
@@ -148,7 +150,7 @@ class Cartogram:
 
             return xattract, yattract
 
-        borders = knn_borders(self.gdf)
+        borders = border_util.get_borders(self.gdf)
         perimeter = self.gdf.length
 
         df = gpd.GeoDataFrame(
@@ -265,7 +267,16 @@ class Cartogram:
 
 
     def dorling(self, ratio=0.4, friction=0.25, iterations=100):
-        pass
+        borders, islands = border_util.get_borders(self.gdf)
+        perimeter = self.gdf.length
+
+        regions = gpd.GeoDataFrame(
+            self.gdf.drop(columns=self.geo_field), geometry=self.gdf.centroid
+        )
+        if islands is not None:
+            regions = regions.drop(islands, axis=0, inplace=False)
+
+        return regions, W.from_adjlist(borders), borders
 
 
     def diffusion(self):

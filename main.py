@@ -2,7 +2,6 @@ import geojson
 import shapely.ops
 
 import cartogram
-import borders
 
 # import os
 # os.environ['USE_PYGEOS'] = '0'
@@ -129,7 +128,7 @@ if __name__ == '__main__':
 
     # 'countries' | 'regions' | 'cua' | 'lad'
     try:
-        places_df, features, code_type = init_geojson("cua")
+        places_df, features, code_type = init_geojson("lad")
     except NameError as e:
         print(e)
         exit(-1)
@@ -156,9 +155,23 @@ if __name__ == '__main__':
 
     # londonless_geo_pop = geo_pop[geo_pop["Name"] != "LONDON"].reset_index(drop=True)
 
-    # cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
+    cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
+    regions, borders, adjlist = cart.dorling()
+
+    centroids = regions["geometry"].to_numpy()
+    centroids = np.vstack(centroids)
+
+    plt.plot(centroids[:,0], centroids[:,1], '.', color='r', markersize=0.2)
+
+    for k, neighs in borders.neighbors.items():
+        # print(k, neighs)
+        origin = centroids[k]
+        for neigh in neighs:
+            segment = centroids[[k, neigh]]
+            plt.plot(segment[:, 0], segment[:, 1], '-', linewidth=0.2)
+
     # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
-    # dorling = cart.dorling(iterations=99)
+    # dorling = cart.old_dorling(iterations=1000)
 
     # borders = cartogram.shared_borders(geo_pop)
     # knn_borders = cartogram.knn_borders(geo_pop)
@@ -171,7 +184,7 @@ if __name__ == '__main__':
     #         print(f"Neighbour {neighbour} and Weight {weight} are mismatched")
 
     # WQ, WK = borders.get_borders(geo_pop)
-    W = borders.get_borders(geo_pop)
+    # W = borders.get_borders(geo_pop)
 
     # test_geo_pop = geo_pop.copy()
     #
@@ -190,7 +203,8 @@ if __name__ == '__main__':
     #     indicator=True
     # )
 
-    # geo_pop.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    geo_pop.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    # regions.plot(color='r', ax=ax, markersize=0.1, legend=False)
     # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     # dorling.plot(color='blue', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
 
@@ -198,6 +212,6 @@ if __name__ == '__main__':
 
     # geo_pop.plot(column='Population', cmap=new_cmap, ax=ax, edgecolor='0', linewidth=0.1, legend=True)
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
-    # plt.savefig("no_islands.png", dpi=750)
+    plt.savefig("centroids.png", dpi=1200)
 
 
