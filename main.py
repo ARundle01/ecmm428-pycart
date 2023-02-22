@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
 # from shapely.ops import unary_union
+from libpysal.weights import W
 
 
 def parse_geojson(fname, is_pop=False):
@@ -156,19 +157,52 @@ if __name__ == '__main__':
     # londonless_geo_pop = geo_pop[geo_pop["Name"] != "LONDON"].reset_index(drop=True)
 
     cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
-    regions, borders, adjlist = cart.dorling()
+    # borders, islands, regions, current_region, neighbours, xrepel, yrepel, xattract, yattract, repel_dist, attract_dist = cart.dorling(iterations=1, stop=77)
+    regions = cart.dorling(iterations=200, stop=None)
 
-    centroids = regions["geometry"].to_numpy()
-    centroids = np.vstack(centroids)
+    # for i in range(1, 101):
+    #     fig, ax = plt.subplots(1, figsize=(4, 4))
+    #     ax.axis('equal')
+    #     ax.axis('off')
+    #     plt.xlim((-9.492274504549895, 2.6818561740215383))
+    #     plt.ylim((49.31499355, 61.41058145))
+    #
+    #     print(f"Running {i} iterations:\n")
+    #     regions, displacement = cart.dorling(iterations=i)
+    #     geo_pop.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    #     regions.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    #
+    #     plt.savefig(f"./dorling_out/dorling_iters_{i}.png", dpi=1200)
+    #
+    #     print("\n")
+    #     plt.cla()
 
-    plt.plot(centroids[:,0], centroids[:,1], '.', color='r', markersize=0.2)
+    # centroids = regions["geometry"].to_numpy()
+    # centroids = np.vstack(centroids)
+    # plt.plot(centroids[:, 0], centroids[:, 1], '.', color='r', markersize=0.2)
 
-    for k, neighs in borders.neighbors.items():
-        # print(k, neighs)
-        origin = centroids[k]
-        for neigh in neighs:
-            segment = centroids[[k, neigh]]
-            plt.plot(segment[:, 0], segment[:, 1], '-', linewidth=0.2)
+    # borders_W = W.from_adjlist(borders)
+    #
+    # for k, neighs in borders_W.neighbors.items():
+    #     if k not in islands:
+    #         origin = centroids[k]
+    #         for neigh in neighs:
+    #             segment = centroids[[k, neigh]]
+    #             plt.plot(segment[:, 0], segment[:, 1], '-', linewidth=0.2)
+
+    # no_island_centroids = regions.drop(islands, axis=0, inplace=False)
+    # no_island_centroids = np.vstack(no_island_centroids["geometry"].to_numpy())
+    # plt.plot(no_island_centroids[:,0], no_island_centroids[:,1], '.', color='r', markersize=0.2)
+
+    # if islands is not None:
+    #     regions = regions.drop(islands, axis=0, inplace=False)
+    #
+    # radius_regions = gpd.GeoDataFrame(
+    #     data=regions.drop(columns=["geometry", "radius"]),
+    #     geometry=regions.apply(lambda x: x["geometry"].buffer(x["radius"]), axis=1)
+    # )
+    #
+    # neighbours_idx = neighbours.index.values.tolist()
 
     # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
     # dorling = cart.old_dorling(iterations=1000)
@@ -204,14 +238,22 @@ if __name__ == '__main__':
     # )
 
     geo_pop.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
-    # regions.plot(color='r', ax=ax, markersize=0.1, legend=False)
+
     # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     # dorling.plot(color='blue', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
+
+    # New Dorling Method Testing
+    # radius_regions.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # radius_regions.loc[neighbours_idx].plot(color='b', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # radius_regions.loc[[current_region]].plot(color='r', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    regions.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     # places_df.plot(ax=ax, edgecolor='0', linewidth=0.1)
 
     # geo_pop.plot(column='Population', cmap=new_cmap, ax=ax, edgecolor='0', linewidth=0.1, legend=True)
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
-    plt.savefig("centroids.png", dpi=1200)
+
+    # Plot Figure
+    plt.savefig("./dorling_out/dorling_iters_200.png", dpi=1200)
 
 
