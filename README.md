@@ -1,4 +1,4 @@
-# ecmm428-cartogrampy
+# ecmm428-pycart
 
 ![GitHub](https://img.shields.io/github/license/ARundle01/ecmm428-cartogrampy)
 ![GitHub code size in bytes](https://img.shields.io/github/repo-size/ARundle01/ecmm428-cartogrampy)
