@@ -268,7 +268,6 @@ class Cartogram:
 
     def dorling(self, ratio=0.4, friction=0.25, iterations=100, stop=None):
         def repel(neighbour, focal, xrepel, yrepel):
-            # if neighbour["dist"] > 1.0:
             xrepel -= (
                 neighbour["overlap"] * (neighbour["geometry"].x - focal["geometry"].x) / neighbour["dist"]
             )
@@ -299,9 +298,6 @@ class Cartogram:
         regions = gpd.GeoDataFrame(
             self.gdf.drop(columns=self.geo_field), geometry=self.gdf.centroid
         )
-
-        # if islands is not None:
-        #     regions = regions.drop(islands, axis=0, inplace=False)
 
         focal = np.stack(
             borders.merge(

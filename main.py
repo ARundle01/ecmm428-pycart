@@ -12,7 +12,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-# from shapely.ops import unary_union
 from libpysal.weights import W
 
 
@@ -158,7 +157,7 @@ if __name__ == '__main__':
 
     cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
     # borders, islands, regions, current_region, neighbours, xrepel, yrepel, xattract, yattract, repel_dist, attract_dist = cart.dorling(iterations=1, stop=77)
-    regions = cart.dorling(iterations=300, stop=None)
+    regions = cart.dorling(iterations=100, friction=0.25, stop=None)
 
     # for i in range(1, 101):
     #     fig, ax = plt.subplots(1, figsize=(4, 4))
@@ -254,6 +253,6 @@ if __name__ == '__main__':
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
 
     # Plot Figure
-    plt.savefig("./dorling_out/dorling_iters_300.png", dpi=1200)
+    plt.savefig("./dorling_iters_100_ratio_0_9.png", dpi=1200)
 
 
