@@ -1,14 +1,10 @@
-from functools import partial
-
 import border_util
 
-import pyfftw
 import geopandas as gpd
 import numpy as np
-import pandas as pd
 
 from shapely.affinity import scale, translate
-from libpysal.weights import Rook, W, KNN, attach_islands
+from shapely.geometry import box
 
 
 def paired_distance(X, Y):
@@ -16,35 +12,6 @@ def paired_distance(X, Y):
     norms = np.einsum("ij, ij -> i", Z, Z)
     return np.sqrt(norms, norms)
 
-
-def shared_borders(gdf, geo_field = "geometry"):
-    rook = Rook.from_dataframe(gdf)
-    weights = {
-        idx: [
-            gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]).length
-            for nid in neighbours
-        ]
-        for idx, neighbours in rook.neighbors.items()
-    }
-
-    return W(rook.neighbors, weights).to_adjlist()
-
-
-def knn_borders(gdf, geo_field="geometry"):
-    rook = Rook.from_dataframe(gdf)
-    weights = {
-        idx: [
-            gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]).length
-            for nid in neighbours
-        ]
-        for idx, neighbours in rook.neighbors.items()
-    }
-
-    w_knn = KNN.from_dataframe(gdf, k=1)
-    w = W(rook.neighbors, weights)
-    w_attach = attach_islands(w, w_knn)
-
-    return w_attach.to_adjlist()
 
 class Cartogram:
     def __init__(self, gdf, value_field, id_field=None, geometry_field='geometry'):
@@ -58,27 +25,6 @@ class Cartogram:
         else:
             self.id_field = id_field
 
-    @classmethod
-    def multi_to_single(cls, gdf, geo_field ="geometry"):
-        gdf_singles = gdf[gdf[geo_field]].type == "Polygon"
-        gdf_multis = gdf[gdf[geo_field]].type == "MultiPolygon"
-
-        partial_seperation = partial(cls.__seperate, geo_field="geometry")
-        sep = gdf_multis.apply(partial_seperation, axis=1).tolist()
-        sep.append(gdf_singles)
-
-        out = pd.concat(sep).reset_index(drop=True)
-        out.crs = gdf.crs
-
-        return out
-
-    @staticmethod
-    def __seperate(row, geo_field):
-        df = pd.concat(
-            [gpd.GeoDataFrame(row).T] * len(row[geo_field]), ignore_index=True
-        )
-        df[geo_field] = row[geo_field]
-        return df
 
     def non_contiguous(self, position="centroid", size_value=1.0):
         geodf = self.gdf[[self.value_field, self.id_field, self.geo_field]].copy()
@@ -114,156 +60,6 @@ class Cartogram:
         del geodf["density"], geodf["rank"], geodf["cent"]
 
         return gpd.GeoDataFrame(geodf, geometry=new_geo)
-
-
-    def old_dorling(self, ratio=0.4, friction=0.25, iterations=99):
-        def repel(x, row, xrepel, yrepel):
-            if x["dist"] > 1.0:
-                xrepel -= (
-                    x["overlap"] * (x["geometry"].x - row["geometry"].x) / x["dist"]
-                )
-                yrepel -= (
-                        x["overlap"] * (x["geometry"].y - row["geometry"].y) / x["dist"]
-                )
-
-            return xrepel, yrepel
-
-        def attract(x, idx, borders, row, perimeter, xattract, yattract):
-            # if (idx in borders["focal"].values) and (x.name in borders["neighbour"].values):
-            #     x["overlap"] = (
-            #         abs(x["overlap"]) * float(
-            #             borders[(borders["focal"] == idx) & (borders["neighbor"] == x.name)]["weight"]
-            #         ) / perimeter[idx]
-            #     )
-
-            # if (idx in borders["focal"].values) and (x.name in borders["neighbor"].values):
-            if idx in borders["focal"].values:
-                if x.name in borders[borders["focal"] == idx]["neighbor"].values:
-                    x["overlap"] = (
-                        abs(x["overlap"]) * float(
-                            borders[(borders["focal"] == idx) & (borders["neighbor"] == x.name)]["weight"]
-                        ) / perimeter[idx]
-                    )
-
-            xattract += x["overlap"] * (x["geometry"].x - row["geometry"].x) / x["dist"]
-            yattract += x["overlap"] * (x["geometry"].y - row["geometry"].y) / x["dist"]
-
-            return xattract, yattract
-
-        borders = border_util.get_borders(self.gdf)
-        perimeter = self.gdf.length
-
-        df = gpd.GeoDataFrame(
-            self.gdf.drop(columns=self.geo_field), geometry=self.gdf.centroid
-        )
-
-        focal = np.stack(
-            borders.merge(
-                df[self.geo_field].map(np.array).to_frame(),
-                left_on="focal",
-                right_index=True,
-            ).sort_index()[self.geo_field]
-        )
-
-        neighbor = np.stack(
-            borders.merge(
-                df[self.geo_field].map(np.array).to_frame(),
-                left_on="neighbor",
-                right_index=True,
-            ).sort_index()[self.geo_field]
-        )
-
-        total_distance = np.sum(paired_distance(focal, neighbor))
-
-        focal_radius = borders.merge(
-            df[[self.value_field]],
-            left_on="focal",
-            right_index=True,
-        ).sort_index()[self.value_field]
-
-        neighbor_radius = borders.merge(
-            df[[self.value_field]],
-            left_on="neighbor",
-            right_index=True,
-        ).sort_index()[self.value_field]
-
-        total_radius = np.sum(
-            (focal_radius / np.pi) ** 0.5 + (neighbor_radius / np.pi) ** 0.5
-        )
-
-        scale = total_distance / total_radius
-
-        df["radius"] = np.power(df[self.value_field] / np.pi, 0.5) * scale
-        widest = df["radius"].max()
-
-        for i in range(iterations):
-            print(f"Iteration {i}")
-            displacement = 0.0
-
-            # For each geometry
-            for idx, row in df.iterrows():
-                xrepel = 0.0
-                yrepel = 0.0
-                xattract = 0.0
-                yattract = 0.0
-                closest = widest
-
-                neighbours = df[
-                    df.distance(row[self.geo_field]).between(
-                        0, widest + row["radius"], inclusive='neither',
-                    )
-                ].copy()
-
-                if len(neighbours) > 0:
-                    neighbours["dist"] = neighbours[self.geo_field].distance(row[self.geo_field])
-
-                    closest = widest if neighbours["dist"].min() > widest else neighbours["dist"].min()
-
-                    neighbours["overlap"] = (neighbours["radius"] + row["radius"]) - neighbours["dist"]
-
-                    for idy, rowy in neighbours.iterrows():
-                        if rowy["overlap"] > 0.0:
-                            xrepel, yrepel = repel(rowy, row, xrepel, yrepel)
-                        else:
-                            xattract, yattract = attract(rowy, idx, borders, row, perimeter, xattract, yattract)
-
-                combined_attr = (xattract ** 2 + yattract ** 2) ** 0.5
-                combined_repl = (xrepel ** 2 + yrepel ** 2) ** 0.5
-
-                if combined_repl > closest:
-                    xrepel = closest * xrepel / (combined_repl + 1.0)
-                    yrepel = closest * yrepel / (combined_repl + 1.0)
-                    combined_repl = closest
-
-                if combined_repl > 0:
-                    xtotal = (1.0 - ratio) * xrepel + ratio * (
-                            combined_repl * xattract / (combined_attr + 1.0)
-                    )
-                    ytotal = (1.0 - ratio) * yrepel + ratio * (
-                            combined_repl * yattract / (combined_attr + 1.0)
-                    )
-                else:
-                    if combined_attr > closest:
-                        xattract = closest * xattract / (combined_attr + 1.0)
-                        yattract = closest * yattract / (combined_attr + 1.0)
-                    xtotal = xattract
-                    ytotal = yattract
-
-                displacement += (xtotal ** 2 + ytotal ** 2) ** 0.5
-
-                xvector = friction * xtotal
-                yvector = friction * ytotal
-
-                df.loc[idx, self.geo_field] = translate(
-                    row[self.geo_field], xoff=xvector, yoff=yvector
-                )
-
-            displacement = displacement / len(df)
-
-        return gpd.GeoDataFrame(
-            data=df.drop(columns=["geometry", "radius"]),
-            geometry=df.apply(lambda x: x["geometry"].buffer(x["radius"]), axis=1)
-        )
 
 
     def dorling(self, ratio=0.4, friction=0.25, iterations=100, stop=None):
@@ -341,7 +137,6 @@ class Cartogram:
         for i in range(iterations):
             print(f"Starting Iteration: {i}")
             displacement = 0.0
-            current_region = None
 
             for idx, region in regions.iterrows():
                 if stop is not None:
@@ -352,7 +147,6 @@ class Cartogram:
                 xattract = 0.0
                 yattract = 0.0
                 closest = widest
-                current_region = idx
 
                 neighbours = regions[
                     regions.distance(region[self.geo_field]).between(
@@ -411,9 +205,50 @@ class Cartogram:
             geometry=regions.apply(lambda x: x["geometry"].buffer(x["radius"]), axis=1)
         )
 
-    def diffusion(self):
-        pass
+    def diffusion(self, max_iter=100, diff_coeff=0.25, grid_size=(100, 100)):
+        def make_density_grid():
+            minx, miny, maxx, maxy = self.gdf.total_bounds
 
+            gdf = self.gdf.copy()
+            gdf['density'] = gdf[self.value_field] / gdf.area
+            mean_density = gdf['density'].mean()
+
+            W = maxx - minx
+            H = maxy - miny
+
+            n_cells_x, n_cells_y = grid_size
+
+            cell_x = W / n_cells_x
+            cell_y = H / n_cells_y
+
+            x_coords = np.arange(minx, maxx, cell_x)
+            y_coords = np.arange(miny, maxy, cell_y)
+
+            geometries = [box(x, y, x + cell_x, y + cell_y) for y in y_coords for x in x_coords]
+            fishnet = gpd.GeoDataFrame(geometry=geometries, crs=gdf.crs)
+
+            sindex = gdf.sindex
+
+            densities = []
+
+            for i, cell in fishnet.iterrows():
+                cell_geom = cell['geometry']
+                possible_matches_idx = list(sindex.intersection(cell_geom.bounds))
+                possible_matches = gdf.iloc[possible_matches_idx]
+
+                precise_matches = possible_matches[possible_matches.intersects(cell_geom)]
+
+                if not precise_matches.empty:
+                    density = precise_matches['density'].max()
+                else:
+                    density = mean_density
+                densities.append(density)
+
+            fishnet['density'] = densities
+
+            return fishnet
+
+    # TODO: Implement rest of Gastner-Newman diffusion algorithm
 
     def fast_flow(self):
         pass

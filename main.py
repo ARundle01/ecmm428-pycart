@@ -1,5 +1,6 @@
 import geojson
 import shapely.ops
+from shapely import geometry
 
 import cartogram
 
@@ -114,6 +115,15 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     return new_cmap
 
 
+def make_gdf(places_df, pop_df):
+    sub_pop = get_sub_pop(pop_df, places_df, code_type)
+    geo_pop = places_df.merge(sub_pop, on=code_type)
+
+    gdf = gpd.GeoDataFrame(geo_pop).set_crs('EPSG:3857')
+
+    return gdf
+
+
 if __name__ == '__main__':
     pop = "./data/Dec2020/ukpopestimatesdec2020.csv"
 
@@ -133,6 +143,8 @@ if __name__ == '__main__':
         print(e)
         exit(-1)
 
+    gdf = make_gdf(places_df, pop_df)
+
     # squares_features, squares_keys = parse_geojson("./data/Test/square_test.geojson")
     # squares_df = gpd.GeoDataFrame.from_features(squares_features)
     #
@@ -150,14 +162,15 @@ if __name__ == '__main__':
     # squares_dorling.plot(color='blue', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     # plt.savefig("squares_dorling.png", dpi=750)
 
-    sub_pop = get_sub_pop(pop_df, places_df, code_type)
-    geo_pop = places_df.merge(sub_pop, on=code_type)
+    # gdf.plot(color='w', ax=ax, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # gdf.to_file('out.shp')
 
     # londonless_geo_pop = geo_pop[geo_pop["Name"] != "LONDON"].reset_index(drop=True)
 
-    cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
+    # cart = cartogram.Cartogram(geo_pop, "Population", id_field="Name")
     # borders, islands, regions, current_region, neighbours, xrepel, yrepel, xattract, yattract, repel_dist, attract_dist = cart.dorling(iterations=1, stop=77)
-    regions = cart.dorling(iterations=100, friction=0.25, stop=None)
+    # regions = cart.dorling(iterations=100, stop=None)
+    # diffusion = cart.diffusion()
 
     # for i in range(1, 101):
     #     fig, ax = plt.subplots(1, figsize=(4, 4))
@@ -236,7 +249,92 @@ if __name__ == '__main__':
     #     indicator=True
     # )
 
-    geo_pop.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    # geo_pop.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    minx, miny, maxx, maxy = gdf.total_bounds
+    gdf['density'] = gdf['Population'] / gdf.area
+    # gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+
+    # x, y = (minx, miny)
+    # geom_array = []
+    # densities = []
+
+    w = maxx - minx
+    h = maxy - miny
+
+    n_cells_x = 256
+    n_cells_y = 256
+    cell_x = w / n_cells_x
+    cell_y = h / n_cells_y
+
+    x_coords = np.arange(minx, maxx, cell_x)
+    y_coords = np.arange(miny, maxy, cell_y)
+
+    geometries = [geometry.box(x, y, x + cell_x, y + cell_y) for y in y_coords for x in x_coords]
+    fishnet = gpd.GeoDataFrame(geometry=geometries, crs=gdf.crs)
+
+    mean_density = gdf['density'].mean()
+
+    sindex = gdf.sindex
+
+    densities = []
+
+    for i, cell in fishnet.iterrows():
+        cell_geom = cell['geometry']
+        possible_matches_index = list(sindex.intersection(cell_geom.bounds))
+        possible_matches = gdf.iloc[possible_matches_index]
+        precise_matches = possible_matches[possible_matches.intersects(cell_geom)]
+        if not precise_matches.empty:
+            density = precise_matches['density'].max()
+        else:
+            density = mean_density
+        densities.append(density)
+
+    fishnet['density'] = densities
+
+    # cell_x_num = 0
+    # cell_y_num = 0
+    #
+    # while y < maxy:
+    #     while x < maxx:
+    #         print(f"Cell at (x, y): ({cell_x_num}, {cell_y_num})")
+    #         geom = geometry.Polygon([(x,y), (x, y+cell_y), (x+cell_x, y+cell_y), (x+cell_x, y), (x, y)])
+    #         geom_array.append(geom)
+    #
+    #         cell_x_num += 1
+    #
+    #         # Check if cell intersects with gdf
+    #         cell = gpd.GeoDataFrame(geometry=[geom]).set_crs('EPSG:3857')
+    #         intersection = gpd.overlay(cell, gdf, how='intersection')
+    #
+    #         if len(intersection) > 0:
+    #             print("Adding intersection density")
+    #             density = intersection['density'].iloc[0]
+    #         else:
+    #             print("Adding mean density")
+    #             density = mean_density
+    #
+    #         densities.append(density)
+    #         x += cell_x
+    #     x = minx
+    #     y += cell_y
+    #     cell_y_num += 1
+    #     cell_x_num = 0
+    #
+    # fishnet = gpd.GeoDataFrame(geom_array, columns=['geometry']).set_crs('EPSG:3857')
+    # fishnet['density'] = densities
+    fishnet.plot(facecolor='none', ax=ax, alpha=0.5, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+
+    # joined = gpd.sjoin(fishnet, gdf, op='intersects')
+    # joined.plot(color='w', ax=ax, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+
+    # fishnet['density'] = joined['density'].fillna(mean_density)
+
+    OrRd = plt.get_cmap('OrRd')
+    trunced_OrRd = truncate_colormap(OrRd, 0.2)
+
+    fishnet.plot(column='density', cmap=trunced_OrRd, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=True)
+
+    # density = joined.groupby(['index_right']).agg({'density': 'mean'})
 
     # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     # dorling.plot(color='blue', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
@@ -245,7 +343,9 @@ if __name__ == '__main__':
     # radius_regions.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
     # radius_regions.loc[neighbours_idx].plot(color='b', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
     # radius_regions.loc[[current_region]].plot(color='r', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
-    regions.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # regions.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+
+    # diffusion.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
 
     # places_df.plot(ax=ax, edgecolor='0', linewidth=0.1)
 
@@ -253,6 +353,6 @@ if __name__ == '__main__':
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
 
     # Plot Figure
-    plt.savefig("./dorling_iters_100_ratio_0_9.png", dpi=1200)
+    plt.savefig("./out/fishnet_256_density_2.png", dpi=1200)
 
 
