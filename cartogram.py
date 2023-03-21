@@ -1,5 +1,4 @@
 import pyfftw
-import pyfftw.interfaces.numpy_fft as fftw
 
 import border_util
 
@@ -241,18 +240,29 @@ class Cartogram:
             cell_x = W / n_cells_x
             cell_y = H / n_cells_y
 
-            x_coords = np.arange(minx, maxx, cell_x)
-            y_coords = np.arange(miny, maxy, cell_y)
+            padding = n_cells_x
 
-            geometries = [box(x, y, x + cell_x, y + cell_y) for y in y_coords for x in x_coords]
+            n_cells_x_padded = n_cells_x + 2 * padding
+            n_cells_y_padded = n_cells_y + 2 * padding
+
+            minx_padded = minx - (padding * cell_x)
+            miny_padded = miny - (padding * cell_y)
+            maxx_padded = maxx + (padding * cell_x)
+            maxy_padded = maxy + (padding * cell_y)
+
+            x_coords_padded = np.arange(minx_padded, maxx_padded, cell_x)
+            y_coords_padded = np.arange(miny_padded, maxy_padded - cell_y, cell_y)
+
+            geometries = [box(x, y, x + cell_x, y + cell_y) for y in y_coords_padded for x in x_coords_padded]
             fishnet = gpd.GeoDataFrame(geometry=geometries, crs=gdf.crs)
 
             sindex = gdf.sindex
 
             densities = []
 
-            for i, cell in fishnet.iterrows():
+            for idx, cell in fishnet.iterrows():
                 cell_geom = cell['geometry']
+
                 possible_matches_idx = list(sindex.intersection(cell_geom.bounds))
                 possible_matches = gdf.iloc[possible_matches_idx]
 
@@ -262,11 +272,12 @@ class Cartogram:
                     density = precise_matches['density'].max()
                 else:
                     density = mean_density
+
                 densities.append(density)
 
             fishnet['density'] = densities
 
-            return fishnet, n_cells_x, n_cells_y
+            return fishnet, n_cells_x_padded, n_cells_y_padded
 
 
         def create_grid_of_points():
@@ -287,18 +298,17 @@ class Cartogram:
             # Convert density grid to column-major form
             rho = np.array(densities).reshape((self.xsize, self.ysize), order='F')
 
-            # self.fftrho = pyfftw.empty_aligned((self.xsize, self.ysize//2+1), dtype='float64')
+            self.fftrho = pyfftw.empty_aligned((self.xsize, self.ysize), dtype='complex128')
 
-            fft_plan = pyfftw.builders.rfftn(rho, s=(self.xsize, self.ysize), axes=(0, 1), planner_effort='FFTW_ESTIMATE')
+            # TODO: rfftn and fftn do not produce expected outputs; try changing to scipy's DCT
+
+            fft_plan = pyfftw.builders.rfftn(self.fftrho, s=(self.xsize, self.ysize), axes=(0, 1), planner_effort='FFTW_ESTIMATE', norm='forward')
             self.fftrho = fft_plan(rho)
 
 
         def density_snapshot(t, s):
-            ix, iy = 0, 0
             kx, ky = 0, 0
             expkx = 0
-
-            print(self.xsize, self.ysize)
 
             # Calculate expky array to save time in next part
             for iy in range(0, self.ysize):
@@ -309,7 +319,6 @@ class Cartogram:
                 kx = np.pi * ix / self.xsize
                 expkx = np.exp(-kx * kx * t)
 
-                # TODO: fftrho is (100, 51) instead of (100, 100)
                 for iy in range (0, self.ysize):
                     self.fftexpt[ix][iy] = expkx * self.expky[iy] * self.fftrho[ix][iy]
                     self.rhot[s][ix][iy] = self.fftexpt[ix][iy]
@@ -549,6 +558,8 @@ class Cartogram:
             while self.drp > 0.0:
                 sp = integrate_two_steps(t, h, s)
 
+                self.drp = 0.0
+
                 t += 2.0 * h
                 step += 2
                 s = sp
@@ -569,6 +580,11 @@ class Cartogram:
 
         density_grid, self.xsize, self.ysize = make_density_grid()
 
+        densities = density_grid['density'].values
+
+        # Convert density grid to column-major form
+        # rho = np.array(densities).reshape((self.xsize, self.ysize), order='F')
+
         self.rhot = np.zeros((5, self.xsize, self.ysize))
         self.fftrho = np.zeros((self.xsize, self.ysize))
         self.fftexpt = np.zeros((self.xsize, self.ysize))
@@ -582,7 +598,7 @@ class Cartogram:
 
         # transform = project_cartogram(cartogram)
 
-        return self.fftrho
+        return density_grid
 
     def fast_flow(self):
         pass

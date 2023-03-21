@@ -150,9 +150,16 @@ if __name__ == '__main__':
     cart = cartogram.Cartogram(gdf, "Population", id_field="Name")
     # dorling = cart.dorling(iterations=100, stop=None)
     # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
-    fftrho = cart.diffusion()
+    density_grid = cart.diffusion()
 
     # gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+
+    # density_grid.plot(facecolor='none', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+
+    OrRd = plt.get_cmap('OrRd')
+    trunced_OrRd = truncate_colormap(OrRd, 0.2)
+
+    # density_grid.plot(column='density', cmap=trunced_OrRd, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=True)
 
     # diffusion.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
 
@@ -162,6 +169,6 @@ if __name__ == '__main__':
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
 
     # Plot Figure
-    # plt.savefig("./out/fishnet_256_density_2.png", dpi=1200)
+    # plt.savefig("./out/fishnet_100_density_2_padded.png", dpi=1200)
 
 
