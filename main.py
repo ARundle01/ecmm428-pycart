@@ -150,7 +150,7 @@ if __name__ == '__main__':
     cart = cartogram.Cartogram(gdf, "Population", id_field="Name")
     # dorling = cart.dorling(iterations=100, stop=None)
     # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
-    density_grid = cart.diffusion()
+    density_grid, fftrho = cart.diffusion()
 
     # gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
 

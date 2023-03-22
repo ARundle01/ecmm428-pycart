@@ -1,4 +1,5 @@
 import pyfftw
+from scipy import fft
 
 import border_util
 
@@ -19,6 +20,8 @@ class Cartogram:
     def __init__(self, gdf, value_field, id_field=None, geometry_field='geometry'):
 
         # Initialise Gastner-Newman variables
+        self.vxt = None
+        self.vyt = None
         self.xsize = None
         self.ysize = None
         self.rhot = None
@@ -300,10 +303,10 @@ class Cartogram:
 
             self.fftrho = pyfftw.empty_aligned((self.xsize, self.ysize), dtype='complex128')
 
-            # TODO: rfftn and fftn do not produce expected outputs; try changing to scipy's DCT
+            # fft_plan = pyfftw.builders.rfftn(self.fftrho, s=(self.xsize, self.ysize), axes=(0, 1), planner_effort='FFTW_ESTIMATE', norm='forward')
+            # self.fftrho = fft_plan(rho)
 
-            fft_plan = pyfftw.builders.rfftn(self.fftrho, s=(self.xsize, self.ysize), axes=(0, 1), planner_effort='FFTW_ESTIMATE', norm='forward')
-            self.fftrho = fft_plan(rho)
+            self.fftrho = fft.dctn(rho, s=(self.xsize, self.ysize), norm='forward')
 
 
         def density_snapshot(t, s):
@@ -324,9 +327,78 @@ class Cartogram:
                     self.rhot[s][ix][iy] = self.fftexpt[ix][iy]
 
             # Perform back-transform
-            fft_plan = pyfftw.builders.irfftn(self.rhot[s], s=(self.xsize, self.ysize), axes=(0, 1), planner_effort='FFTW_ESTIMATE')
-            self.fftrho = fft_plan(self.rhot[s])
+            # fft_plan = pyfftw.builders.irfftn(self.rhot[s], s=(self.xsize, self.ysize), axes=(0, 1), planner_effort='FFTW_ESTIMATE')
+            # self.fftrho = fft_plan(self.rhot[s])
 
+            self.fftrho = fft.idctn(self.rhot[s], s=(self.xsize, self.ysize))
+
+
+        def make_vgrid(s):
+            # TODO: Figure out why this shit isn't working
+            self.vxt[s][0][0] = 0.0
+            self.vyt[s][0][0] = 0.0
+
+            self.vxt[s][self.xsize-1][0] = 0.0
+            self.vyt[s][self.xsize-1][0] = 0.0
+
+            self.vxt[s][0][self.ysize-1] = 0.0
+            self.vyt[s][0][self.ysize-1] = 0.0
+
+            self.vxt[s][self.xsize-1][self.ysize-1] = 0.0
+            self.vyt[s][self.xsize-1][self.ysize-1] = 0.0
+
+            # Do the Top border
+            r11 = self.rhot[s][0]
+            for ix in range(1, self.xsize):
+                r01 = r11
+                # r11 = self.rhot[s][ix * self.ysize]
+                r11 = self.rhot[s][ix][self.ysize-1]
+
+                self.vxt[s][ix][0] = -2 * (r11 - r01) / (r11 + r01)
+                self.vyt[s][ix][0] = 0.0
+
+            # Do the Bottom border
+            r10 = self.rhot[s][self.ysize-1]
+            for ix in range(1, self.xsize):
+                r00 = r10
+                r10 = self.rhot[s][ix * self.ysize + self.ysize-1]
+
+                self.vxt[s][ix][self.ysize-1] = -2 * (r10 - r00) / (r10 + r10)
+                self.vyt[s][ix][self.ysize-1] = 0.0
+
+            # Do the Left edge
+            r11 = self.rhot[s][0]
+            for iy in range(1, self.ysize):
+                r10 = r11
+                r11 = self.rhot[s][iy]
+
+                self.vxt[s][0][iy] = 0.0
+                self.vyt[s][0][iy] = -2 * (r11 - r10) / (r11 + r10)
+
+            # Do the Right edge
+            r01 = self.rhot[s][(self.xsize - 1) * self.ysize]
+            for iy in range(1, self.ysize):
+                r00 = r01
+                r01 = self.rhot[s][(self.xsize - 1) * self.ysize + iy]
+
+                self.vxt[s][self.xsize-1][iy] = 0.0
+                self.vyt[s][self.xsize-1][iy] = -2 * (r01 - r00) / (r01 + r00)
+
+            # Do all Points in the Middle
+            for ix in range(1, self.xsize):
+                r01 = self.rhot[s][(ix - 1) * self.ysize]
+                r11 = self.rhot[s][ix * self.ysize]
+
+                for iy in range(1, self.ysize):
+                    r00 = r01
+                    r10 = r11
+                    r01 = self.rhot[s][(ix - 1) * self.ysize + iy]
+                    r11 = self.rhot[s][ix * self.ysize + iy]
+
+                    mid = r10 + r00 + r11 + r01
+
+                    self.vxt[s][ix][iy] = -2 * (r10 - r00 + r11 - r01) / mid
+                    self.vyt[s][ix][iy] = -2 * (r01 - r00 + r11 - r10) / mid
 
         def velocity(rx, ry, s):
             ix = int(rx)
@@ -358,37 +430,7 @@ class Cartogram:
             if iyp1 >= self.ysize:
                 iyp1 = self.ysize - 1
 
-            # Calculate densities at nine surrounding grid points
-            rho00 = self.rhot[s][ixm1][iym1]
-            rho10 = self.rhot[s][ix][iym1]
-            rho20 = self.rhot[s][ixp1][iym1]
-            rho01 = self.rhot[s][ixm1][iy]
-            rho11 = self.rhot[s][ix][iy]
-            rho21 = self.rhot[s][ixp1][iy]
-            rho02 = self.rhot[s][ixm1][iyp1]
-            rho12 = self.rhot[s][ix][iyp1]
-            rho22 = self.rhot[s][ixp1][iyp1]
-
-
-            # Calculate velocities at four surrounding grid points
-            mid11 = rho00 + rho10 + rho01 + rho11
-            vx11 = -2.0 * (rho10 - rho00 + rho11 - rho01) / mid11
-            vy11 = -2.0 * (rho01 - rho00 + rho11 - rho10) / mid11
-
-            mid21 = rho10 + rho20 + rho11 + rho21
-            vx21 = -2.0 * (rho20 - rho10 + rho21 - rho11) / mid21
-            vy21 = -2.0 * (rho11 - rho10 + rho21 - rho20) / mid21
-
-            mid12 = rho01 + rho11 + rho02 + rho12
-            vx12 = -2.0 * (rho11 - rho01 + rho12 - rho02) / mid12
-            vy12 = -2.0 * (rho02 - rho01 + rho12 - rho11) / mid12
-
-            mid22 = rho11 + rho21 + rho12 + rho22
-            vx22 = -2.0 * (rho21 - rho11 + rho22 - rho12) / mid22
-            vy22 = -2.0 * (rho12 - rho11 + rho22 - rho21) / mid22
-
-
-            # Calculate weights for bilinear interpolation
+           # Calculate weights for Bilinear Interpolation
             dx = rx - ix
             dy = ry - iy
 
@@ -400,9 +442,8 @@ class Cartogram:
             w12 = dx1m * dy
             w22 = dx * dy
 
-            # Perform interpolation for x and y components of velocity
-            vxp = w11*vx11 + w21*vx21 + w12*vx12 + w22*vx22
-            vyp = w11*vy11 + w21*vy21 + w12*vy12 + w22*vy22
+            vxp = w11 * self.vxt[s][ix][iy] + w21 * self.vxt[s][ix+1][iy] + w12 * self.vxt[s][ix][iy+1] + w22 * self.vxt[s][ix+1][iy+1]
+            vyp = w11 * self.vyt[s][ix][iy] + w21 * self.vyt[s][ix+1][iy] + w12 * self.vyt[s][ix][iy+1] + w22 * self.vyt[s][ix+1][iy+1]
 
             vp = (vxp, vyp)
 
@@ -420,6 +461,11 @@ class Cartogram:
             density_snapshot((t + 1.0 * h), s2)
             density_snapshot((t + 1.5 * h), s3)
             density_snapshot((t + 2.0 * h), s4)
+
+            make_vgrid(s1)
+            make_vgrid(s2)
+            make_vgrid(s3)
+            make_vgrid(s4)
 
 
             # Do three Runga-Kutta steps for each point in turn
@@ -558,8 +604,6 @@ class Cartogram:
             while self.drp > 0.0:
                 sp = integrate_two_steps(t, h, s)
 
-                self.drp = 0.0
-
                 t += 2.0 * h
                 step += 2
                 s = sp
@@ -589,6 +633,8 @@ class Cartogram:
         self.fftrho = np.zeros((self.xsize, self.ysize))
         self.fftexpt = np.zeros((self.xsize, self.ysize))
         self.expky = np.zeros(self.ysize)
+        self.vxt = np.zeros((5, self.xsize, self.ysize))
+        self.vyt = np.zeros((5, self.xsize, self.ysize))
 
         compute_initial_density(density_grid)
 
@@ -598,7 +644,7 @@ class Cartogram:
 
         # transform = project_cartogram(cartogram)
 
-        return density_grid
+        return density_grid, self.fftrho
 
     def fast_flow(self):
         pass
