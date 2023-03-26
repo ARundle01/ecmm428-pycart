@@ -1,19 +1,13 @@
 import geojson
-import shapely.ops
-from shapely import geometry
 
-import cartogram
+from src.pycart_ARundle01 import cartogram
 
-# import os
-# os.environ['USE_PYGEOS'] = '0'
 import geopandas as gpd
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-
-from libpysal.weights import W
 
 
 def parse_geojson(fname, is_pop=False):
