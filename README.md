@@ -23,10 +23,10 @@ Make sure you have the latest version of PIP installed:
 py -m pip install --upgrade pip
 ```
 
-This package is currently hosted on TestPyPi, as it is currently in unstable development. To install
+This package is currently only hosted on TestPyPi, as it is currently in unstable development. To install
 and use this package from TestPyPi:
 ```pycon
-py -m pip install --index-url https://test.pypi.org/simple/ pycart-ARundle01
+py -m pip install -i https://test.pypi.org/simple/ pycart
 ```
 
 ## Pre-requisites
