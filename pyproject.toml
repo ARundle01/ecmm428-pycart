@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycart"
-version = "0.1.3"
+version = "0.1.4"
 description = "A Python package for generating Cartograms using GeoDataFrames."
 authors = ["Alex Rundle <alexrundle01@gmail.com>"]
 readme = "README.md"
