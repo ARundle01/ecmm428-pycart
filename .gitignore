@@ -133,3 +133,4 @@ dmypy.json
 data/
 dorling_out/
 out/
+__pycache__
