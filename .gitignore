@@ -130,7 +130,3 @@ dmypy.json
 .pyre/
 
 # Development Directories and Files
-data/
-dorling_out/
-out/
-__pycache__
