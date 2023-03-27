@@ -1,6 +1,6 @@
 import geojson
 
-from src.pycart_ARundle01 import cartogram
+from pycart import cartogram
 
 import geopandas as gpd
 
@@ -143,10 +143,11 @@ if __name__ == '__main__':
 
     cart = cartogram.Cartogram(gdf, "Population", id_field="Name")
     # dorling = cart.dorling(iterations=100, stop=None)
-    # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
-    density_grid, fftrho = cart.diffusion()
+    non_con = cart.non_contiguous(position='centroid', size_value=1.0)
+    # density_grid, fftrho = cart.diffusion()
 
-    # gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
 
     # density_grid.plot(facecolor='none', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
 
@@ -163,6 +164,4 @@ if __name__ == '__main__':
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
 
     # Plot Figure
-    # plt.savefig("./out/fishnet_100_density_2_padded.png", dpi=1200)
-
-
+    plt.savefig("./out/non_con_test.png", dpi=1200)
