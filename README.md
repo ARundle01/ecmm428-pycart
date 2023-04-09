@@ -12,9 +12,9 @@ Contributors to this project are
 - Alex Rundle (ARundle01)
 
 ## License
-This project is licensed under the Apache 2.0 license.
+This project is licensed under the BSD 3-Clause License
 
-SPDX-License-Identifier: Apache-2.0
+SPDX-License-Identifier: BSD-3-Clause
 
 ## Installation
 ### Using Pip

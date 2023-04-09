@@ -1,0 +1,17 @@
+site_name: pycart
+site_author: Alex Rundle
+
+copyright: Copyright (c) 2023, Alex Rundle
+
+repo_url: https://github.com/ARundle01/ecmm428-pycart
+
+nav:
+  - Home: index.md
+  - Installing pycart: install.md
+  - Quick Start: quick.md
+  - Reference: reference.md
+  - About: about.md
+
+theme:
+  name: readthedocs
+  locale: en
