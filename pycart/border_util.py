@@ -2,6 +2,14 @@ from libpysal.weights import Queen, W
 
 
 def get_borders(gdf, geo_field="geometry"):
+    """
+    Calculates bordering regions for all regions using Queen contiguity (i.e. neighbours share
+    either a corner or an edge).
+
+    :param gdf: GeoDataFrame containing regions
+    :param geo_field: Field within gdf that contains the geometric data
+    :return: Border Adjacency list and list of Islands (disconnected components)
+    """
     islands = None
     wq = Queen.from_dataframe(gdf, silence_warnings=True)
 
@@ -22,7 +30,11 @@ def get_borders(gdf, geo_field="geometry"):
             for idx, neighbors in wq.neighbors.items()
         }
 
-        return W(wq.neighbors, weights, silence_warnings=True).to_adjlist(), islands
+        borders = W(wq.neighbors, weights, silence_warnings=True).to_adjlist()
+
+        borders = borders.astype({'focal': int, 'neighbor': int})
+
+        return borders, islands
     else:
         weights = {
             idx: [
@@ -32,4 +44,8 @@ def get_borders(gdf, geo_field="geometry"):
             for idx, neighbors in wq.neighbors.items()
         }
 
-        return W(wq.neighbors, weights).to_adjlist(), islands
+        borders = W(wq.neighbors, weights).to_adjlist()
+
+        borders = borders.astype({'focal': int, 'neighbor': int})
+
+        return borders, islands

@@ -27,10 +27,10 @@ def parse_geojson(fname, is_pop=False):
 
 
 def init_geojson(map_type):
-    cua = "./data/Dec2020/Counties_and_Unitary_Authorities_(December_2020)_UK_BGC.geojson"
-    countries = "./data/Dec2020/Countries_(December_2020)_UK_BGC.geojson"
-    lad = "./data/Dec2020/Local_Authority_Districts_(December_2020)_UK_BGC.geojson"
-    regions = "./data/Dec2020/Regions_(December_2020)_EN_BGC.geojson"
+    cua = "./data/UK/Dec2020/Counties_and_Unitary_Authorities_(December_2020)_UK_BGC.geojson"
+    countries = "./data/UK/Dec2020/Countries_(December_2020)_UK_BGC.geojson"
+    lad = "./data/UK/Dec2020/Local_Authority_Districts_(December_2020)_UK_BGC.geojson"
+    regions = "./data/UK/Dec2020/Regions_(December_2020)_EN_BGC.geojson"
     wales_name = None
     removal = None
 
@@ -56,7 +56,7 @@ def init_geojson(map_type):
         features_df.drop(['OBJECTID', name_type, wales_name], axis=1, inplace=True)
         features_df.drop(to_remove, axis=0, inplace=True)
 
-        temp_lad = "./data/Dec2021/Local_Authority_Districts_(December_2021)_GB_BGC.geojson"
+        temp_lad = "./data/UK/Dec2021/Local_Authority_Districts_(December_2021)_GB_BGC.geojson"
         temp_features, temp_code_type, temp_name_type = parse_geojson(temp_lad, True)
         temp_features_df = gpd.GeoDataFrame.from_features(temp_features)
         temp_features_df.drop(['OBJECTID', 'LAD21NMW', 'GlobalID', temp_name_type], axis=1, inplace=True)
@@ -119,7 +119,7 @@ def make_gdf(places_df, pop_df):
 
 
 if __name__ == '__main__':
-    pop = "./data/Dec2020/ukpopestimatesdec2020.csv"
+    pop = "./data/UK/Dec2020/ukpopestimatesdec2020.csv"
 
     cmap = plt.get_cmap('Reds')
     new_cmap = truncate_colormap(cmap, 0.2, 0.9)
@@ -142,21 +142,16 @@ if __name__ == '__main__':
     # gdf.plot(color='w', ax=ax, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     cart = cartogram.Cartogram(gdf, "Population", id_field="Name")
-    # dorling = cart.dorling(iterations=100, stop=None)
+    dorling = cart.dorling(iterations=25, stop=None)
+
     non_con = cart.non_contiguous(position='centroid', size_value=1.0)
-    # density_grid, fftrho = cart.diffusion()
 
     gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
-    non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
-
-    # density_grid.plot(facecolor='none', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
+    dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     OrRd = plt.get_cmap('OrRd')
     trunced_OrRd = truncate_colormap(OrRd, 0.2)
-
-    # density_grid.plot(column='density', cmap=trunced_OrRd, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=True)
-
-    # diffusion.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
 
     # places_df.plot(ax=ax, edgecolor='0', linewidth=0.1)
 
@@ -164,4 +159,4 @@ if __name__ == '__main__':
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
 
     # Plot Figure
-    plt.savefig("./out/non_con_test.png", dpi=1200)
+    plt.savefig("./out/fixed_dorling_25.png", dpi=1200)
