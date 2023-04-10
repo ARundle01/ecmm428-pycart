@@ -1,5 +1,17 @@
 # About the `pycart` library
+The `pycart` library was originally developed for my Master's thesis submission 
+at the University of Exeter. The driving force behind this library is that there 
+are remarkably few examples of Cartogram generation in Python, and even fewer easy-to-use 
+libraries that implement such methods. 
 
+Given Python's inherent modularity and the wealth of existing Geospatial Analysis 
+and visualisation libraries, I thought it strange that there wasn't a library that implemented 
+Cartogram generation. This formed the basis of my thesis: to develop an easy-to-use library that can 
+generate Cartograms using a variety of techniques, as well as being compatible with common 
+Geospatial libraries (e.g. GeoPandas).
+
+
+## License
 The `pycart` library is licensed under the BSD 3-Clause license:
 
 ```

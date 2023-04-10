@@ -9,9 +9,16 @@ nav:
   - Home: index.md
   - Installing pycart: install.md
   - Quick Start: quick.md
-  - Reference: reference.md
-  - About: about.md
+  - 'API Reference':
+      - 'Cartogram': api/cartogram.md
+      - 'Utilities': api/border.md
+  - 'About':
+      - about.md
 
 theme:
   name: readthedocs
   locale: en
+
+plugins:
+  - search
+  - mkdocstrings
