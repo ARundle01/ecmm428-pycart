@@ -1,6 +1,7 @@
 [tool.poetry]
 name = "pycart"
-version = "0.1.6"
+version = "0.1.8"
+>>>>>>> Stashed changes
 description = "A Python package for generating Cartograms using GeoDataFrames."
 authors = ["Alex Rundle <alexrundle01@gmail.com>"]
 readme = "README.md"
@@ -13,6 +14,8 @@ geojson = "3.0.1"
 numpy = "1.24.2"
 libpysal = "4.7.0"
 shapely = "2.0.1"
+mkdocs = "1.4.2"
+jinja2 = "^3.1.2"
 
 
 [build-system]
