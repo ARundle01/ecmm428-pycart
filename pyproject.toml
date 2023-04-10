@@ -1,0 +1,34 @@
+[tool.poetry]
+name = "pycart"
+version = "0.1.7"
+description = "A Python package for generating Cartograms using GeoDataFrames."
+authors = ["Alex Rundle <alexrundle01@gmail.com>"]
+readme = ["README.md", "docs/index.md"]
+license = "BSD-3-Clause"
+repository = "https://github.com/ARundle01/ecmm428-pycart"
+#documentation = ""
+
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering :: Visualization"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9, <3.12"
+matplotlib = "3.7.1"
+geopandas = "0.12.2"
+geojson = "3.0.1"
+numpy = "1.24.2"
+libpysal = "4.7.0"
+shapely = "2.0.1"
+mkdocs = "1.4.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
