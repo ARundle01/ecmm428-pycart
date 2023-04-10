@@ -6,9 +6,22 @@ def get_borders(gdf, geo_field="geometry"):
     Calculates bordering regions for all regions using Queen contiguity (i.e. neighbours share
     either a corner or an edge).
 
-    :param gdf: GeoDataFrame containing regions
-    :param geo_field: Field within gdf that contains the geometric data
-    :return: Border Adjacency list and list of Islands (disconnected components)
+    Similar to a [Moore neighbourhood](https://en.wikipedia.org/wiki/Moore_neighborhood), Queen
+    contiguity determines a neighbour as a region that shares an edge or vertex with the focal region.
+
+    Weights are assigned to each focal, neighbour pair using [`libpysal.weights.Queen`](https://pysal.org/libpysal/generated/libpysal.weights.Queen.html).
+    The weights are based on the amount of a focal region's perimeter is occupied by the neighbour region.
+
+    ###**Parameters**
+
+    - **gdf  :  *[geopandas.GeoDataFrame](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html)*** - A dataset that you want to find all borders for
+    - **geo_field  :  *string, optional, default 'geometry'*** - Field containing the geometries of each region
+
+    ###**Returns**
+
+    - ***[pandas.DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html)*** - DataFrame where each row contains
+    the focal node, its neighbour and the Queen contiguity weight.
+
     """
     islands = None
     wq = Queen.from_dataframe(gdf, silence_warnings=True)
