@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycart"
-version = "0.1.12"
+version = "0.1.13"
 description = "A Python package for generating Cartograms using GeoDataFrames."
 authors = ["Alex Rundle <alexrundle01@gmail.com>"]
 readme = ["README.md", "docs/index.md"]
@@ -27,7 +27,7 @@ numpy = "1.24.2"
 libpysal = "4.7.0"
 shapely = "2.0.1"
 mkdocs = "1.4.2"
-jinja2 = "3.0.0"
+jinja2 = "<3.1.0"
 pandas = "1.5.3"
 pillow = "9.4.0"
 pytz = "2023.2"
