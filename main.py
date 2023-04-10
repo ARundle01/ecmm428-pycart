@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
     # 'countries' | 'regions' | 'cua' | 'lad'
     try:
-        places_df, features, code_type = init_geojson("lad")
+        places_df, features, code_type = init_geojson("countries")
     except NameError as e:
         print(e)
         exit(-1)
@@ -141,17 +141,17 @@ if __name__ == '__main__':
 
     # gdf.plot(color='w', ax=ax, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
-    cart = cartogram.Cartogram(gdf, "Population", id_field="Name")
-    dorling = cart.dorling(iterations=25, stop=None)
+    cart = cartogram.Cartogram(gdf, "Population", id_field="Name", geometry_field="geometry")
+    dorling = cart.dorling(iterations=1, stop=None)
 
-    non_con = cart.non_contiguous(position='centroid', size_value=1.0)
+    # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
 
     gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
     # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
-    dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
-    OrRd = plt.get_cmap('OrRd')
-    trunced_OrRd = truncate_colormap(OrRd, 0.2)
+    # OrRd = plt.get_cmap('OrRd')
+    # trunced_OrRd = truncate_colormap(OrRd, 0.2)
 
     # places_df.plot(ax=ax, edgecolor='0', linewidth=0.1)
 
@@ -159,4 +159,4 @@ if __name__ == '__main__':
     # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
 
     # Plot Figure
-    plt.savefig("./out/fixed_dorling_25.png", dpi=1200)
+    # plt.savefig("./out/tutorial_noncon.png", dpi=1200)
