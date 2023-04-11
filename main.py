@@ -9,6 +9,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
+from libpysal.weights import W
+
 
 def parse_geojson(fname, is_pop=False):
     with open(fname) as f:
@@ -75,12 +77,14 @@ def init_geojson(map_type):
 
 
 def to_int(x):
+    int_x = None
     try:
         int_x = int(x.replace(',', ''))
     except AttributeError:
         int_x = int(x)
     finally:
         return int_x
+
 
 def parse_pop(fname):
     pop_df = pd.read_csv(fname)
@@ -118,13 +122,121 @@ def make_gdf(places_df, pop_df):
     return gdf
 
 
+def parse_world_pop(fname):
+    world_df = pd.read_csv(fname)
+
+    world_df['Country'] = world_df[['Country Name']]
+    world_df['ISO'] = world_df[['Country Code']]
+    world_df['Population'] = world_df[['2021']]
+
+    world_df = world_df[['Country', 'ISO', 'Population']]
+
+    world_df = world_df.astype({'Country': str, 'ISO': str, 'Population': float})
+
+    return world_df
+
+
+def init_world_geojson():
+    pop = "./data/World/API_SP.POP.TOTL_DS2_en_csv_v2_5358404.csv"
+    geo = "./data/World/World_Countries_(Generalized).geojson"
+
+    world_pop = parse_world_pop(pop)
+    world_f, world_k = parse_geojson(geo)
+
+    features_df = gpd.GeoDataFrame.from_features(world_f)
+
+    features_df['Country'] = features_df['COUNTRY']
+    features_df = features_df[['Country', 'ISO', 'SHAPE_Length', 'SHAPE_Area', 'geometry']]
+
+    # Drop all irrelevant rows
+    to_drop = [
+        'WLD',
+        'IBT',
+        'LMY',
+        'MIC',
+        'IBD',
+        'EAR',
+        'LMC',
+        'UMC',
+        'EAS',
+        'LTE',
+        'EAP',
+        'TEA',
+        'SAS',
+        'TSA',
+        'IDA',
+        'OED',
+        'HIC',
+        'IDX',
+        'SSF',
+        'TSS',
+        'SSA',
+        'PST',
+        'LDC',
+        'PRE',
+        'FCS',
+        'ECS',
+        'HPC',
+        'LIC',
+        'AFE',
+        'LCN',
+        'TLA',
+        'IDB',
+        'LAC',
+        'MEA',
+        'AFW',
+        'TEC',
+        'ARB',
+        'EUU',
+        'MNA',
+        'TMN',
+        'ECA',
+        'NAC',
+        'EMU',
+        'CEB',
+        'SST',
+        'OSS',
+        'CSS',
+        'PSS',
+        'INX',
+    ]
+
+    dropping = world_pop['ISO'].isin(to_drop)
+    world_pop = world_pop[~dropping].reset_index(drop=True)
+
+    return world_pop, features_df
+
+
+def combine_geo_val(geo, val):
+    combined = val.merge(geo, on='Country')
+    combined = combined.drop(columns={'ISO_y'})
+
+    combined = combined.rename(columns={'ISO_x': 'ISO'})
+
+    combined = gpd.GeoDataFrame(combined).set_crs('EPSG:3857')
+
+    return combined
+
+
 if __name__ == '__main__':
     pop = "./data/UK/Dec2020/ukpopestimatesdec2020.csv"
+    world_pop = "./data/World/API_SP.POP.TOTL_DS2_en_csv_v2_5358404.csv"
+    world_geo = "./data/World/World_Countries_(Generalized).geojson"
+
+    # world_df = parse_world_pop(world_pop)
+    #
+    # world_f, world_k = parse_geojson(world_geo)
+    #
+    # world_f_df = gpd.GeoDataFrame.from_features(world_f)
+
+    world_df, world_features = init_world_geojson()
+
+    combined = combine_geo_val(world_features, world_df)
 
     cmap = plt.get_cmap('Reds')
     new_cmap = truncate_colormap(cmap, 0.2, 0.9)
 
-    fig, ax = plt.subplots(1, figsize=(4, 4))
+    fig, ax = plt.subplots(1)
     ax.axis('equal')
     ax.axis('off')
 
@@ -132,7 +244,7 @@ if __name__ == '__main__':
 
     # 'countries' | 'regions' | 'cua' | 'lad'
     try:
-        places_df, features, code_type = init_geojson("countries")
+        places_df, features, code_type = init_geojson("cua")
     except NameError as e:
         print(e)
         exit(-1)
@@ -141,22 +253,21 @@ if __name__ == '__main__':
 
     # gdf.plot(color='w', ax=ax, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
-    cart = cartogram.Cartogram(gdf, "Population", id_field="Name", geometry_field="geometry")
-    dorling = cart.dorling(iterations=1, stop=None)
-
+    # cart = cartogram.Cartogram(gdf, "Population", id_field="Name", geometry_field="geometry")
+    # dorling = cart.dorling(iterations=100, stop=None)
     # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
 
-    gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0,  edgecolor='0', linewidth=0.1, legend=False)
+    # gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
     # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     # dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
-    # OrRd = plt.get_cmap('OrRd')
-    # trunced_OrRd = truncate_colormap(OrRd, 0.2)
+    combined_cart = cartogram.Cartogram(combined, "Population", id_field="ISO", geometry_field="geometry")
+    combined_dorling = combined_cart.dorling(iterations=100, stop=None)
+    # combined_non_con = combined_cart.non_contiguous(position='centroid', size_value=5.0)
 
-    # places_df.plot(ax=ax, edgecolor='0', linewidth=0.1)
-
-    # gdf.plot(column='Population', cmap=new_cmap, ax=ax, edgecolor='0', linewidth=0.1, legend=True)
-    # ax.set_title('Population of LADs', fontdict={'fontsize': '15', 'fontweight': '3'})
+    combined.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # combined_non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
+    combined_dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     # Plot Figure
-    # plt.savefig("./out/tutorial_noncon.png", dpi=1200)
+    plt.savefig("./out/dorling_world.png", dpi=1200)

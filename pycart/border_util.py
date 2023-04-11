@@ -1,4 +1,5 @@
 from libpysal.weights import Queen, W
+import pandas as pd
 
 
 def get_borders(gdf, geo_field="geometry"):
@@ -43,7 +44,13 @@ def get_borders(gdf, geo_field="geometry"):
             for idx, neighbors in wq.neighbors.items()
         }
 
-        borders = W(wq.neighbors, weights, silence_warnings=True).to_adjlist()
+        borders = pd.DataFrame(columns=['focal', 'neighbor', 'weight'])
+        for focal, neighbour_list in wq.neighbors.items():
+            weight_list = weights[focal]
+
+            temp_df = pd.DataFrame({'focal': focal, 'neighbor': neighbour_list, 'weight': weight_list})
+
+            borders = pd.concat([borders, temp_df], ignore_index=True)
 
         borders = borders.astype({'focal': int, 'neighbor': int})
 
@@ -57,7 +64,13 @@ def get_borders(gdf, geo_field="geometry"):
             for idx, neighbors in wq.neighbors.items()
         }
 
-        borders = W(wq.neighbors, weights).to_adjlist()
+        borders = pd.DataFrame(columns=['focal', 'neighbor', 'weight'])
+        for focal, neighbour_list in wq.neighbors.items():
+            weight_list = weights[focal]
+
+            temp_df = pd.DataFrame({'focal': focal, 'neighbor': neighbour_list, 'weight': weight_list})
+
+            borders = pd.concat([borders, temp_df], ignore_index=True)
 
         borders = borders.astype({'focal': int, 'neighbor': int})
 
