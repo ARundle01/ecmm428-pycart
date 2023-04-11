@@ -5,6 +5,7 @@ ecmm428 - The `pycart` package
 ![GitHub code size in bytes](https://img.shields.io/github/repo-size/ARundle01/ecmm428-pycart)
 ![GitHub last commit](https://img.shields.io/github/last-commit/ARundle01/ecmm428-pycart)
 ![GitHub top language](https://img.shields.io/github/languages/top/ARundle01/ecmm428-pycart)
+[![Documentation Status](https://readthedocs.org/projects/ecmm428-pycart/badge/?version=latest)](https://ecmm428-pycart.readthedocs.io/en/latest/?badge=latest)
 
 ## Contributors
 Contributors to this project are
