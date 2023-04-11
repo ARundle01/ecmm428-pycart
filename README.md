@@ -40,4 +40,6 @@ All code in this Repository and Package was developed and tested on Windows 10.
 This Repository requires:
 - **Python >=3.9**
 
-# [Read the Docs!](http://ecmm428-pycart.readthedocs.io/)
+## Read the Docs!
+Further information about `pycart` can be found [here](https://ecmm428-pycart.readthedocs.io/en/latest/), 
+including further installation and dependency details, a quickstart guide and API reference.
