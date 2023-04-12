@@ -162,7 +162,7 @@ class Cartogram:
         Suppose we have an anchor unit $H$ of area $A_H$ and value $V_H$ and a miscellaneous
         region $J$, with area $A_J$ and value $V_J$. The scaling value applied to $J$ is:
 
-        $\sqrt{(A_H / A_J) \cdot (V_J / V_H)}$
+        $(\sqrt{V_H / A_H})^{-1} \cdot \sqrt{V_J / A_J}$
 
         ###**Parameters**
 
