@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
 from libpysal.weights import W
+from dataprep.clean import clean_country
 
 
 def parse_geojson(fname, is_pop=False):
@@ -129,6 +130,7 @@ def parse_world_pop(fname):
     world_df['ISO'] = world_df[['Country Code']]
     world_df['Population'] = world_df[['2021']]
 
+
     world_df = world_df[['Country', 'ISO', 'Population']]
 
     world_df = world_df.astype({'Country': str, 'ISO': str, 'Population': float})
@@ -148,70 +150,73 @@ def init_world_geojson():
     features_df['Country'] = features_df['COUNTRY']
     features_df = features_df[['Country', 'ISO', 'SHAPE_Length', 'SHAPE_Area', 'geometry']]
 
-    # Drop all irrelevant rows
-    to_drop = [
-        'WLD',
-        'IBT',
-        'LMY',
-        'MIC',
-        'IBD',
-        'EAR',
-        'LMC',
-        'UMC',
-        'EAS',
-        'LTE',
-        'EAP',
-        'TEA',
-        'SAS',
-        'TSA',
-        'IDA',
-        'OED',
-        'HIC',
-        'IDX',
-        'SSF',
-        'TSS',
-        'SSA',
-        'PST',
-        'LDC',
-        'PRE',
-        'FCS',
-        'ECS',
-        'HPC',
-        'LIC',
-        'AFE',
-        'LCN',
-        'TLA',
-        'IDB',
-        'LAC',
-        'MEA',
-        'AFW',
-        'TEC',
-        'ARB',
-        'EUU',
-        'MNA',
-        'TMN',
-        'ECA',
-        'NAC',
-        'EMU',
-        'CEB',
-        'SST',
-        'OSS',
-        'CSS',
-        'PSS',
-        'INX',
-    ]
+    # # Drop all irrelevant rows
+    # to_drop = [
+    #     'WLD',
+    #     'IBT',
+    #     'LMY',
+    #     'MIC',
+    #     'IBD',
+    #     'EAR',
+    #     'LMC',
+    #     'UMC',
+    #     'EAS',
+    #     'LTE',
+    #     'EAP',
+    #     'TEA',
+    #     'SAS',
+    #     'TSA',
+    #     'IDA',
+    #     'OED',
+    #     'HIC',
+    #     'IDX',
+    #     'SSF',
+    #     'TSS',
+    #     'SSA',
+    #     'PST',
+    #     'LDC',
+    #     'PRE',
+    #     'FCS',
+    #     'ECS',
+    #     'HPC',
+    #     'LIC',
+    #     'AFE',
+    #     'LCN',
+    #     'TLA',
+    #     'IDB',
+    #     'LAC',
+    #     'MEA',
+    #     'AFW',
+    #     'TEC',
+    #     'ARB',
+    #     'EUU',
+    #     'MNA',
+    #     'TMN',
+    #     'ECA',
+    #     'NAC',
+    #     'EMU',
+    #     'CEB',
+    #     'SST',
+    #     'OSS',
+    #     'CSS',
+    #     'PSS',
+    #     'INX',
+    # ]
+    #
+    # dropping = world_pop['ISO'].isin(to_drop)
+    # world_pop = world_pop[~dropping].reset_index(drop=True)
 
-    dropping = world_pop['ISO'].isin(to_drop)
-    world_pop = world_pop[~dropping].reset_index(drop=True)
+    world_pop = clean_country(world_pop, "ISO", input_format="alpha-3", output_format="alpha-2")
+    world_pop.drop(columns=["ISO"], inplace=True)
+    world_pop.rename(columns={"ISO_clean": "ISO"}, inplace=True)
 
     return world_pop, features_df
 
 
 def combine_geo_val(geo, val):
-    combined = val.merge(geo, on='Country')
-    combined = combined.drop(columns={'ISO_y'})
-
-    combined = combined.rename(columns={'ISO_x': 'ISO'})
+    combined = val.merge(geo, on='ISO')
+    combined = combined.drop(columns={'Country_y'})
+    combined = combined.rename(columns={'Country_x': 'Country'})
 
     combined = gpd.GeoDataFrame(combined).set_crs('EPSG:3857')
 
@@ -253,7 +258,7 @@ if __name__ == '__main__':
 
     # gdf.plot(color='w', ax=ax, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
-    # cart = cartogram.Cartogram(gdf, "Population", id_field="Name", geometry_field="geometry")
+    # cart = cartogram.Cartogram(gdf, value_field="Population", id_field="Name", geometry_field="geometry")
     # dorling = cart.dorling(iterations=100, stop=None)
     # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
 
@@ -262,12 +267,12 @@ if __name__ == '__main__':
     # dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     combined_cart = cartogram.Cartogram(combined, "Population", id_field="ISO", geometry_field="geometry")
-    combined_dorling = combined_cart.dorling(iterations=100, stop=None)
-    # combined_non_con = combined_cart.non_contiguous(position='centroid', size_value=5.0)
+    combined_dorling = combined_cart.dorling(iterations=5, stop=None)
+    # combined_non_con = combined_cart.non_contiguous(size_value=5.0)
 
     combined.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
     # combined_non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     combined_dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     # Plot Figure
-    plt.savefig("./out/dorling_world.png", dpi=1200)
+    plt.savefig("./out/dorling_world_new5.png", dpi=1200)
