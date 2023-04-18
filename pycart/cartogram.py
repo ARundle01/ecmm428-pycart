@@ -138,8 +138,8 @@ class Cartogram:
         ###**Parameters**
 
         - **gdf  :  *[geopandas.GeoDataFrame](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html)*** - The dataset that you want to apply cartogram techniques to
-        - **value_field  :  *String*** - Field in the dataset to apply cartogram techniques to
-        - **id_field  :  *String*** - Field of the identifier for each region in the dataset
+        - **value_field  :  *String*** - Field in the dataset to apply cartogram techniques to; the values themselves should be integer or float values
+        - **id_field  :  *String*** - Field of the identifier for each region in the dataset; the id values should be unique so that the generated cartograms can be linked back to original data
         - **geometry_field  :  *String, optional, default 'geometry'*** - Field containing the geometries of each region
 
         ###**Example**

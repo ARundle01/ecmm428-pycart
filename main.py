@@ -9,7 +9,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-from libpysal.weights import W
 from dataprep.clean import clean_country
 
 
@@ -266,13 +265,13 @@ if __name__ == '__main__':
     # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     # dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
-    combined_cart = cartogram.Cartogram(combined, "Population", id_field="ISO", geometry_field="geometry")
-    combined_dorling = combined_cart.dorling(iterations=5, stop=None)
+    # combined_cart = cartogram.Cartogram(combined, "Population", id_field="ISO", geometry_field="geometry")
+    # combined_dorling = combined_cart.dorling(iterations=5, stop=None)
     # combined_non_con = combined_cart.non_contiguous(size_value=5.0)
 
-    combined.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # combined.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
     # combined_non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
-    combined_dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # combined_dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     # Plot Figure
-    plt.savefig("./out/dorling_world_new5.png", dpi=1200)
+    # plt.savefig("./out/dorling_world_new5.png", dpi=1200)
