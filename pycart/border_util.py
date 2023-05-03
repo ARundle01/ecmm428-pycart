@@ -1,4 +1,5 @@
 from libpysal.weights import Queen, W
+import pandas as pd
 
 
 def get_borders(gdf, geo_field="geometry"):
@@ -26,15 +27,18 @@ def get_borders(gdf, geo_field="geometry"):
     islands = None
     wq = Queen.from_dataframe(gdf, silence_warnings=True)
 
+    # If there are disconnected regions (islands)
     if len(wq.islands) > 0:
+        # Remove the islands
         islands = wq.islands
-
         temp_gdf = gdf.drop(islands, axis=0)
 
+        # Reset the index after removing the islands
         WQ = wq.to_adjlist(drop_islands=True)
         WQ.reset_index(inplace=True, drop=True)
         wq = W.from_adjlist(WQ)
 
+        # Compute the length of intersection between current region and neighbours
         weights = {
             idx: [
                 temp_gdf.loc[idx, geo_field].intersection(temp_gdf.loc[nid, geo_field]).length
@@ -43,12 +47,24 @@ def get_borders(gdf, geo_field="geometry"):
             for idx, neighbors in wq.neighbors.items()
         }
 
-        borders = W(wq.neighbors, weights, silence_warnings=True).to_adjlist()
+        # Create the borders DataFrame
+        borders = pd.DataFrame(columns=['focal', 'neighbor', 'weight'])
 
+        # For each focal region, extract weights for all neighbours of focal
+        for focal, neighbour_list in wq.neighbors.items():
+            weight_list = weights[focal]
+
+            temp_df = pd.DataFrame({'focal': focal, 'neighbor': neighbour_list, 'weight': weight_list})
+
+            # Add to DataFrame
+            borders = pd.concat([borders, temp_df], ignore_index=True)
+
+        # Convert region numbers to ints
         borders = borders.astype({'focal': int, 'neighbor': int})
 
         return borders, islands
     else:
+        # Compute the length of intersection between current region and neighbours
         weights = {
             idx: [
                 gdf.loc[idx, geo_field].intersection(gdf.loc[nid, geo_field]).length
@@ -57,8 +73,19 @@ def get_borders(gdf, geo_field="geometry"):
             for idx, neighbors in wq.neighbors.items()
         }
 
-        borders = W(wq.neighbors, weights).to_adjlist()
+        # Create the borders DataFrame
+        borders = pd.DataFrame(columns=['focal', 'neighbor', 'weight'])
 
+        # For each focal region, extract weights for all neighbours of focal
+        for focal, neighbour_list in wq.neighbors.items():
+            weight_list = weights[focal]
+
+            temp_df = pd.DataFrame({'focal': focal, 'neighbor': neighbour_list, 'weight': weight_list})
+
+            # Add to DataFrame
+            borders = pd.concat([borders, temp_df], ignore_index=True)
+
+        # Convert region numbers to ints
         borders = borders.astype({'focal': int, 'neighbor': int})
 
         return borders, islands

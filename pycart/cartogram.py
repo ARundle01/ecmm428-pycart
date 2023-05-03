@@ -1,9 +1,13 @@
-# Third Party Imports
+# Numerical Imports
 import geopandas as gpd
 import numpy as np
 
+# Import shapely
 from shapely import distance
 from shapely.affinity import scale, translate
+
+# Import progress bar for Dorling
+from alive_progress import alive_bar
 
 # Project Library
 import pycart.border_util as border
@@ -35,9 +39,14 @@ def _repel(neighbour, focal, xrepel, yrepel):
 
     The repulsive force $F$ is split into $x$ and $y$ components, $F_x$ and $F_y$
     respectively. These forces are calculated as the following, where $O$ is the
-    amount the neighbour overlaps with the focal region:
+    amount the neighbour overlaps with the focal region, $D_N$ is the distance
+    from the neighbour to the focal region, $N_x$ is the $x$ position of the neighbour
+    and $M_x$ is the $x$ position of the focal region:
 
     $F_x = O \cdot (N_x - M_x) / D_N$
+
+    The $y$ force is calculated as the following, where $N_y$ and $M_y$ are the $y$
+    positions of the neighbour and focal regions, respectively:
 
     $F_y = O \cdot (N_y - M_y) / D_N$
 
@@ -55,12 +64,15 @@ def _repel(neighbour, focal, xrepel, yrepel):
     - **xrepel  :  *float*** - The new repulsive force in the $x$ direction.
     - **yrepel  : *float*** - The new repulsive force in the $y$ direction.
     """
-    xrepel -= (
-            neighbour["overlap"] * (neighbour["geometry"].x - focal["geometry"].x) / neighbour["dist"]
-    )
-    yrepel -= (
-            neighbour["overlap"] * (neighbour["geometry"].y - focal["geometry"].y) / neighbour["dist"]
-    )
+    # Get overlap, x and y differences and dist to neighbour
+    overlap = neighbour['overlap']
+    dx = neighbour['geometry'].x - focal['geometry'].x
+    dy = neighbour['geometry'].y - focal['geometry'].y
+    dist = neighbour['dist']
+
+    # Subtract from repulsive forces
+    xrepel -= overlap * dx / dist
+    yrepel -= overlap * dy / dist
 
     return xrepel, yrepel
 
@@ -73,17 +85,22 @@ def _attract(nb, borders, idx, focal, perimeter, xattract, yattract):
     Before the attractive forces are calculated, the overlap $O$ amount for a neighbour is scaled as
     such, where $W_{FN}$ is the Queen contiguity weight and $P_F$ is the perimeter of the focal region:
 
-    $O_{new} = (| O_{original} | * W_{NF}) / P_F$
+    $O_{new} = (| O_{original} | * W_{FN}) / P_F$
 
     The attractive force $A$ is split into $x$ and $y$ components, $A_x$ and $A_y$
     respectively. These forces are calculated as the following, where $O$ is the
-    amount the neighbour overlaps with the focal region:
+    amount the neighbour overlaps with the focal region, $D_N$ is the distance
+    from the neighbour to the focal region, $N_x$ is the $x$ position of the neighbour
+    and $M_x$ is the $x$ position of the focal region:
 
     $A_x = O_x \cdot (N_x - M_x) / D_N$
 
+    The $y$ force is calculated as the following, where $N_y$ and $M_y$ are the $y$
+    positions of the neighbour and focal regions, respectively:
+
     $A_y = O_y \cdot (N_y - M_y) / D_N$
 
-    The supplied $x$ and $y$ forces are updated by adding the new forces.
+    The supplied $x$ and $y$ forces are updated by summing with the new forces.
 
     ###**Parameters**
 
@@ -100,23 +117,29 @@ def _attract(nb, borders, idx, focal, perimeter, xattract, yattract):
     - **xattract  :  *float*** - The new attractive force in the $x$ direction.
     - **yattract  : *float*** - The new attractive force in the $y$ direction.
     """
-    print(type(idx))
+    # Create mask of if supplied focal and neighbour were originally neighbours
+    mask = (borders["focal"] == idx) & (borders["neighbor"] == nb.name)
 
-    if sum((borders["focal"] == idx) & (borders["neighbor"] == nb.name)) == 1:
-        nb["overlap"] = (
-                np.abs(nb["overlap"])
-                * float(borders[(borders["focal"] == idx) & (borders["neighbor"] == nb.name)]["weight"])
-                / perimeter[idx]
-        )
+    # If focal and nb are neighbours
+    if not borders[mask].empty:
+        # Scale overlap proportional to border weight
+        nb["overlap"] = (np.abs(nb["overlap"]) * float(borders[mask]["weight"]) / perimeter[idx])
 
-    xattract += nb["overlap"] * (nb["geometry"].x - focal["geometry"].x) / nb["dist"]
-    yattract += nb["overlap"] * (nb["geometry"].y - focal["geometry"].y) / nb["dist"]
+    # Get overlap, x and y differences and dist to neighbour
+    overlap = nb["overlap"]
+    dx = nb["geometry"].x - focal["geometry"].x
+    dy = nb["geometry"].y - focal["geometry"].y
+    dist = nb["dist"]
+
+    # Add to attractive forces
+    xattract += overlap * dx / dist
+    yattract += overlap * dy / dist
 
     return xattract, yattract
 
 
 class Cartogram:
-    def __init__(self, gdf, value_field, id_field=None, geometry_field='geometry'):
+    def __init__(self, gdf, value_field, id_field, geometry_field='geometry'):
         """
         A Cartogram object acts as a generator on a specific dataset, through which
         generation algorithms can be run.
@@ -124,8 +147,8 @@ class Cartogram:
         ###**Parameters**
 
         - **gdf  :  *[geopandas.GeoDataFrame](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html)*** - The dataset that you want to apply cartogram techniques to
-        - **value_field  :  *String*** - Field in the dataset to apply cartogram techniques to
-        - **id_field  :  *String, optional, default None*** - Field of the identifier for each region in the dataset
+        - **value_field  :  *String*** - Field in the dataset to apply cartogram techniques to; the values themselves should be integer or float values
+        - **id_field  :  *String*** - Field of the identifier for each region in the dataset; the id values should be unique so that the generated cartograms can be linked back to original data
         - **geometry_field  :  *String, optional, default 'geometry'*** - Field containing the geometries of each region
 
         ###**Example**
@@ -144,14 +167,9 @@ class Cartogram:
         self.gdf = gdf
         self.value_field = value_field
         self.geo_field = geometry_field
+        self.id_field = id_field
 
-        if not id_field:
-            self.gdf['id_field'] = self.gdf.index
-            self.id_field = "id_field"
-        else:
-            self.id_field = id_field
-
-    def non_contiguous(self, position="centroid", size_value=1.0):
+    def non_contiguous(self, size_value=1.0):
         """
         Calculates and returns a Non-Contiguous cartogram in the form of a GeoDataFrame.
 
@@ -162,11 +180,10 @@ class Cartogram:
         Suppose we have an anchor unit $H$ of area $A_H$ and value $V_H$ and a miscellaneous
         region $J$, with area $A_J$ and value $V_J$. The scaling value applied to $J$ is:
 
-        $\sqrt{(A_H / A_J) \cdot (V_J / V_H)}$
+        $(\sqrt{V_H / A_H})^{-1} \cdot \sqrt{V_J / A_J}$
 
         ###**Parameters**
 
-        - **position  :  *{'centroid', 'centre'}, optional, default 'centroid'*** - Apply scaling based on the region's centroid or the centre of the entire map.
         - **size_value  :  *int, optional, default 1.0*** - A simple multiplier to scaling; larger values accentuate scaling.
 
         ###**Returns**
@@ -184,7 +201,7 @@ class Cartogram:
         cart = cartogram.Cartogram(my_geodf, value_field='Population', id_field='Name', geo_field='Geometry')
 
         # Create Non-Contiguous cartogram
-        non_con = cart.non_contiguous(position='centroid', size_value=1.0)
+        non_con = cart.non_contiguous(size_value=1.0)
 
         # Plot data
         fig, ax = plt.subplots(1, figsize=(4, 4))
@@ -199,42 +216,33 @@ class Cartogram:
 
         ---
         """
+        # Create copy of supplied gdf to prevent permanent data changes
         geodf = self.gdf[[self.value_field, self.id_field, self.geo_field]].copy()
 
-        geo = geodf[self.geo_field]
-        positions = {
-            "centroid": geo.centroid,
-            "centre": geo.envelope.centroid
-        }
+        # Get centroids of all regions
+        geodf["centroid"] = geodf[self.geo_field].centroid
 
-        if position.lower() in positions.keys():
-            geodf["cent"] = positions[position.lower()]
-        else:
-            print("Incorrect Position Parameter, use: 'centroid' | 'centre'")
-
+        # Calculate value-density
         geodf["density"] = geodf[self.value_field] / geodf.area
-        geodf["rank"] = geodf["density"].rank(axis=0, method="first", ascending=False)
 
-        anchor = geodf[geodf["rank"] == 1]["density"].values[0]
+        # Anchor is the region with the highest density
+        anchor = geodf.loc[geodf["density"].idxmax(), "density"]
 
-        geodf["scale"] = (1.0 / np.power(anchor, 0.5)) * np.power(geodf[self.value_field] / geodf.area,
-                                                                  0.5) * size_value
+        # Scale = \sqrt(density / anchor density)
+        # size_value is a simple multiplier to enhance scaling if outputs are weak
+        geodf["scale"] = (geodf["density"] / anchor).pow(0.5) * size_value
 
-        new_geo = [
-            scale(
-                g[1][self.geo_field],
-                xfact=g[1]["scale"],
-                yfact=g[1]["scale"],
-                origin=g[1]["cent"]
-            )
-            for g in geodf.iterrows()
-        ]
+        # Scale geometries by scale value about centroid
+        new_geo = []
+        for _, geo in geodf.iterrows():
+            scaled = scale(geo[self.geo_field], geo['scale'], geo['scale'], origin=geo['centroid'])
+            new_geo.append(scaled)
 
-        del geodf["density"], geodf["rank"], geodf["cent"]
+        geodf = geodf.drop(columns=['density', 'centroid'])
 
         return gpd.GeoDataFrame(geodf, geometry=new_geo)
 
-    def dorling(self, iterations=100, ratio=0.4, friction=0.25, stop=None):
+    def dorling(self, iterations=100, ratio=0.4, friction=0.5, stop=None):
         """
         Runs the Dorling cartogram algorithm and returns the generated cartogram in the form of a GeoDataFrame.
 
@@ -297,119 +305,110 @@ class Cartogram:
         plt.show()
         ```
         """
+        # Create copy of supplied gdf to prevent permanent data changes
+        geodf = self.gdf[[self.value_field, self.id_field, self.geo_field]].copy()
 
-        borders, islands = border.get_borders(self.gdf)
-        perimeter = self.gdf.length
+        # Calculate borders
+        borders, _ = border.get_borders(geodf)
 
-        regions = gpd.GeoDataFrame(
-            self.gdf.drop(columns=self.geo_field), geometry=self.gdf.centroid
-        )
+        perimeter = geodf.length
 
-        focal = np.stack(
-            borders.merge(
-                regions[self.geo_field].map(np.array).to_frame(),
-                left_on="focal",
-                right_index=True,
-            ).sort_index()[self.geo_field]
-        )
+        # Replace geometries with centroids
+        regions = gpd.GeoDataFrame(geodf.drop(columns=self.geo_field), geometry=geodf.centroid)
 
-        neighbour = np.stack(
-            borders.merge(
-                regions[self.geo_field].map(np.array).to_frame(),
-                left_on="neighbor",
-                right_index=True,
-            ).sort_index()[self.geo_field]
-        )
+        # Get focal regions and neighbour regions
+        focals = regions[self.geo_field].loc[borders["focal"]].values
+        neighbours = regions[self.geo_field].loc[borders["neighbor"]].values
 
-        total_distance = np.sum(_paired_distance(focal, neighbour))
+        # Calculate sum of paired_distances between all regions and neighbours
+        total_distance = np.sum(_paired_distance(focals, neighbours))
 
-        focal_radius = borders.merge(
-            regions[[self.value_field]],
-            left_on="focal",
-            right_index=True,
-        ).sort_index()[self.value_field]
+        # Calculate area of each region, where area is equal to the value_field
+        focal_area = borders.merge(regions[[self.value_field]], left_on="focal", right_index=True).sort_index()[self.value_field]
+        neighbour_area = borders.merge(regions[[self.value_field]], left_on="neighbor", right_index=True).sort_index()[self.value_field]
 
-        neighbour_radius = borders.merge(
-            regions[[self.value_field]],
-            left_on="neighbor",
-            right_index=True,
-        ).sort_index()[self.value_field]
+        # Calculate the sum of unscaled radii for each region
+        # The radius for a region is found using r = sqrt(area / pi)
+        total_radius = np.sum(np.sqrt(focal_area / np.pi) + np.sqrt(neighbour_area / np.pi))
 
-        total_radius = np.sum(
-            (focal_radius / np.pi) ** 0.5 + (neighbour_radius / np.pi) ** 0.5
-        )
-
+        # Calculate scale coefficient
         scale = total_distance / total_radius
 
+        # Calculate scaled radius by multiplying original radius by scale
         regions["radius"] = np.power(regions[self.value_field] / np.pi, 0.5) * scale
+
+        # Get widest region
         widest = regions["radius"].max()
 
-        for i in range(iterations):
-            print(f"Starting Iteration: {i}")
-            displacement = 0.0
+        with alive_bar(iterations) as bar:
+            for i in range(iterations):
+                # print(f"Starting Iteration: {i}")
+                bar()
 
-            if stop is not None:
-                if i == stop:
-                    break
+                if stop is not None:
+                    if i == stop:
+                        break
 
-            for idx, region in regions.iterrows():
-                xrepel = 0.0
-                yrepel = 0.0
-                xattract = 0.0
-                yattract = 0.0
-                closest = widest
+                for idx, region in regions.iterrows():
+                    xrepel = yrepel = xattract = yattract = 0.0
+                    closest = widest
 
-                neighbours = regions[
-                    regions.distance(region[self.geo_field]).between(
-                        0, widest + region["radius"], inclusive="neither",
+                    # Get all regions that are within a radius r, where r is the widest radius + current region radius
+                    neighbours = regions[regions.distance(region[self.geo_field]).between(0, widest + region["radius"], inclusive="neither")].copy()
+
+                    if len(neighbours) > 0:
+                        # Calculate distance between each neighbour and the current region
+                        neighbours["dist"] = neighbours[self.geo_field].distance(region[self.geo_field])
+
+                        # Get the closest distance between the current region and all neighbours
+                        closest = widest if neighbours["dist"].min() > widest else neighbours["dist"].min()
+
+                        # Calculate overlap for all neighbours
+                        neighbours["overlap"] = (neighbours["radius"] + region["radius"]) - neighbours["dist"]
+
+                        # Calculate repulsive and attractive forces
+                        for idy, nb in neighbours.iterrows():
+                            if nb["overlap"] > 0.0:
+                                xrepel, yrepel = _repel(nb, region, xrepel, yrepel)
+                            else:
+                                xattract, yattract = _attract(nb, borders, idx, region, perimeter, xattract, yattract)
+
+                    # Calculate the distance covered by attractive and repulsive forces
+                    attract_dist = np.hypot(xattract, yattract)
+                    repel_dist = np.hypot(xrepel, yrepel)
+
+                    # If region is farther away than the closest region, scale vector
+                    if repel_dist > closest:
+                        xrepel, yrepel = closest * np.array((xrepel, yrepel)) / (repel_dist + 1.0)
+                        repel_dist = closest
+
+                    # Calculate new position of region based on forces
+                    if repel_dist > 0:
+                        xtotal = (1 - ratio) * xrepel + ratio * (
+                                repel_dist * xattract / (attract_dist + 1.0))
+                        ytotal = (1 - ratio) * yrepel + ratio * (
+                                repel_dist * yattract / (attract_dist + 1.0))
+                    else:
+                        if attract_dist > closest:
+                            xattract, yattract = closest * np.array((xattract, yattract)) / (attract_dist + 1.0)
+                        xtotal, ytotal = xattract, yattract
+
+                    # Calculate velocity vector by applying friction to total force vectors
+                    xvector, yvector = friction * np.array((xtotal, ytotal))
+
+                    # Update current region position based on calculate xy vectors
+                    regions.loc[idx, self.geo_field] = translate(
+                        region[self.geo_field], xoff=xvector, yoff=yvector
                     )
-                ].copy()
 
-                if len(neighbours) > 0:
-                    neighbours["dist"] = neighbours[self.geo_field].distance(region[self.geo_field])
-
-                    closest = widest if neighbours["dist"].min() > widest else neighbours["dist"].min()
-
-                    neighbours["overlap"] = (neighbours["radius"] + region["radius"]) - neighbours["dist"]
-
-                    for idy, nb in neighbours.iterrows():
-                        if nb["overlap"] > 0.0:
-                            xrepel, yrepel = _repel(nb, region, xrepel, yrepel)
-                        else:
-                            xattract, yattract = _attract(nb, borders, idx, region, perimeter, xattract, yattract)
-
-                attract_dist = np.sqrt((xattract ** 2) + (yattract ** 2))
-                repel_dist = np.sqrt((xrepel ** 2) + (yrepel ** 2))
-
-                if repel_dist > closest:
-                    xrepel = closest * xrepel / (repel_dist + 1.0)
-                    yrepel = closest * yrepel / (repel_dist + 1.0)
-                    repel_dist = closest
-
-                if repel_dist > 0:
-                    xtotal = (1.0 - ratio) * xrepel + ratio * (
-                            repel_dist * xattract / (attract_dist + 1.0)
-                    )
-                    ytotal = (1.0 - ratio) * yrepel + ratio * (
-                            repel_dist * yattract / (attract_dist + 1.0)
-                    )
-                else:
-                    if attract_dist > closest:
-                        xattract = closest * xattract / (attract_dist + 1.0)
-                        yattract = closest * yattract / (attract_dist + 1.0)
-                    xtotal = xattract
-                    ytotal = yattract
-
-                displacement += np.sqrt((xtotal ** 2) + (ytotal ** 2))
-
-                xvector = friction * xtotal
-                yvector = friction * ytotal
-
-                regions.loc[idx, self.geo_field] = translate(
-                    region[self.geo_field], xoff=xvector, yoff=yvector
-                )
+                    # Create the circle regions by adding a buffer around the centroid of
+                    # region using the calculated radius
+                    buffered_geos = []
+                    for _, row in regions.iterrows():
+                        buffered_geo = row["geometry"].buffer(row['radius'])
+                        buffered_geos.append(buffered_geo)
 
         return gpd.GeoDataFrame(
             data=regions.drop(columns=["geometry", "radius"]),
-            geometry=regions.apply(lambda x: x["geometry"].buffer(x["radius"]), axis=1)
+            geometry=buffered_geos
         )
