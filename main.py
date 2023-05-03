@@ -237,6 +237,21 @@ if __name__ == '__main__':
 
     combined = combine_geo_val(world_features, world_df)
 
+    # euro_iso = ["AL", "AD", "AM", "AT", "AZ", "BY", "BE", "BA", "BG", "HR", "CY", "CZ", "DK", "EE", "FO", "FI", "FR",
+    #             "GE", "DE", "GR", "HU", "IS", "IE", "IM", "IT", "KZ", "LV", "LI", "LT", "LU", "MT", "MD", "ME", "NL",
+    #             "NO", "PL", "PT", "MK", "RO", "RU", "SM", "RS", "SK", "SI", "ES", "SE", "CH", "TR", "UA", "GB"]
+
+    euro_iso = ["AL", "AD", "AM", "AT", "AZ", "BY", "BE", "BA", "BG", "HR", "CY", "CZ", "DK", "EE", "FO", "FI", "FR",
+                "GE", "DE", "GR", "HU", "IS", "IE", "IM", "IT", "LV", "LI", "LT", "LU", "MT", "MD", "ME", "NL", "NO",
+                "PL", "PT", "MK", "RO", "SM", "RS", "SK", "SI", "ES", "SE", "CH", "TR", "UA", "GB"]
+
+    dropping = combined['ISO'].isin(euro_iso)
+    euro = combined[dropping].reset_index(drop=True)
+
+    euro = euro.loc[euro.groupby('ISO')['SHAPE_Area'].idxmax()].reset_index(drop=True)
+
+    # pd.DataFrame.to_csv(combined, "./combined.csv")
+
     cmap = plt.get_cmap('Reds')
     new_cmap = truncate_colormap(cmap, 0.2, 0.9)
 
@@ -246,32 +261,87 @@ if __name__ == '__main__':
 
     pop_df = parse_pop(pop)
 
+    pop_df['Region'] = ''
+    current_region = ''
+
+    for idx, row in pop_df.iterrows():
+        if row['Geography'] in ['Region', 'Country']:
+            current_region = row['Name']
+
+        pop_df.at[idx, 'Region'] = current_region
+
     # 'countries' | 'regions' | 'cua' | 'lad'
     try:
-        places_df, features, code_type = init_geojson("cua")
+        places_df, features, code_type = init_geojson("regions")
     except NameError as e:
         print(e)
         exit(-1)
 
     gdf = make_gdf(places_df, pop_df)
 
+    se_area = gdf[gdf['Name'] == 'SOUTH EAST'].area
+    london_area = gdf[gdf['Name'] == 'LONDON'].area
+
+    print(se_area, london_area)
+
     # gdf.plot(color='w', ax=ax, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
     # cart = cartogram.Cartogram(gdf, value_field="Population", id_field="Name", geometry_field="geometry")
     # dorling = cart.dorling(iterations=100, stop=None)
-    # non_con = cart.non_contiguous(position='centroid', size_value=1.0)
+    # dorling = dorling.merge(gdf[['Name', 'Region']], on='Name')
+    # non_con = cart.non_contiguous(size_value=1.0)
 
     # gdf.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
     # non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
-    # dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # dorling_plot = dorling.plot(column='Region', ax=ax, cmap='hsv', alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=True, legend_kwds={'framealpha': 1})
 
-    # combined_cart = cartogram.Cartogram(combined, "Population", id_field="ISO", geometry_field="geometry")
-    # combined_dorling = combined_cart.dorling(iterations=5, stop=None)
+    # for idx, row in dorling.iterrows():
+    #     centroid = row.geometry.centroid
+    #     radius = row.geometry.buffer(0).boundary.distance(centroid)
+    #     font_size = 5
+    #
+    #     if font_size*radius*2 < len(row['Name']):
+    #         name = row['Name'][:int(len(row['Name'])*(0.5))-1] + '\n' + row['Name'][int(len(row['Name'])*(0.5))-1:]
+    #     else:
+    #         name = row['Name']
+    #
+    #     text = ax.annotate(name, (centroid.x, centroid.y),
+    #                        xytext=(0,0), textcoords="offset points",
+    #                        ha='center', va='center', fontsize=font_size)
+
+    combined_cart = cartogram.Cartogram(combined, "Population", id_field="ISO", geometry_field="geometry")
+    combined_dorling = combined_cart.dorling(iterations=100, stop=None)
     # combined_non_con = combined_cart.non_contiguous(size_value=5.0)
 
     # combined.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
     # combined_non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
     # combined_dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
 
+    # for idx, row in combined_dorling.iterrows():
+    #     centroid = row.geometry.centroid
+    #     radius = row.geometry.buffer(0).boundary.distance(centroid)
+    #     font_size = 2
+    #
+    #     text = ax.annotate(row['ISO'], (centroid.x, centroid.y),
+    #                        xytext=(0,0), textcoords="offset points",
+    #                        ha='center', va='center', fontsize=font_size)
+
+    # euro_cart = cartogram.Cartogram(euro, value_field='Population', id_field='ISO', geometry_field='geometry')
+    # euro_dorling = euro_cart.dorling(iterations=500, stop=None)
+    # euro_non_con = euro_cart.non_contiguous(size_value=2.0)
+
+    # euro.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+    # euro_non_con.plot(color='r', ax=ax, edgecolor='0', linewidth=0.1, legend=False)
+    # euro_dorling.plot(color='w', ax=ax, alpha=0.8, zorder=0, edgecolor='0', linewidth=0.1, legend=False)
+
+    # for idx, row in euro_dorling.iterrows():
+    #     centroid = row.geometry.centroid
+    #     radius = row.geometry.buffer(0).boundary.distance(centroid)
+    #     font_size = 2
+    #
+    #     text = ax.annotate(row['ISO'], (centroid.x, centroid.y),
+    #                        xytext=(0, 0), textcoords="offset points",
+    #                        ha='center', va='center', fontsize=font_size)
+
     # Plot Figure
-    # plt.savefig("./out/dorling_world_new5.png", dpi=1200)
+    # plt.savefig("./out/gallery/dorling-cua-classified-legend.png", dpi=1200)

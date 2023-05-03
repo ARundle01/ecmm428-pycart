@@ -24,14 +24,16 @@ Make sure you have the latest version of PIP installed:
 py -m pip install --upgrade pip
 ```
 
-This package is currently hosted on PyPi and TestPyPi, as it is currently in unstable development. To install 
+This package is currently hosted on PyPi and TestPyPi, as it is currently in unstable development. 
+
+To install the latest stable version
 and use this package from PyPi:
 ```pycon
 py -m pip install pycart
 ```
 
 To install
-and use this package from TestPyPi:
+and use the latest development version from TestPyPi:
 ```pycon
 py -m pip install -i https://test.pypi.org/simple/ pycart
 ```
@@ -52,7 +54,7 @@ fixed version dependencies:
 
 | Package                                                    | Version      |
 |------------------------------------------------------------|--------------|
-| [Python](https://www.python.org/downloads/)                | >=3.9, <3.12 |
+| [Python](https://www.python.org/downloads/)                | >=3.9, <3.10 |
 | [matplotlib](https://pypi.org/project/matplotlib/)         | 3.7.1        |
 | [geopandas](https://pypi.org/project/geopandas/)           | 0.12.2       |
 | [geojson](https://pypi.org/project/geojson/)               | 3.0.1        |

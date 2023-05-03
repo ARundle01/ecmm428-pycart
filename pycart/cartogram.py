@@ -39,10 +39,14 @@ def _repel(neighbour, focal, xrepel, yrepel):
 
     The repulsive force $F$ is split into $x$ and $y$ components, $F_x$ and $F_y$
     respectively. These forces are calculated as the following, where $O$ is the
-    amount the neighbour overlaps with the focal region and $D_N$ is the distance
-    from the neighbour to the focal region:
+    amount the neighbour overlaps with the focal region, $D_N$ is the distance
+    from the neighbour to the focal region, $N_x$ is the $x$ position of the neighbour
+    and $M_x$ is the $x$ position of the focal region:
 
     $F_x = O \cdot (N_x - M_x) / D_N$
+
+    The $y$ force is calculated as the following, where $N_y$ and $M_y$ are the $y$
+    positions of the neighbour and focal regions, respectively:
 
     $F_y = O \cdot (N_y - M_y) / D_N$
 
@@ -81,17 +85,22 @@ def _attract(nb, borders, idx, focal, perimeter, xattract, yattract):
     Before the attractive forces are calculated, the overlap $O$ amount for a neighbour is scaled as
     such, where $W_{FN}$ is the Queen contiguity weight and $P_F$ is the perimeter of the focal region:
 
-    $O_{new} = (| O_{original} | * W_{NF}) / P_F$
+    $O_{new} = (| O_{original} | * W_{FN}) / P_F$
 
     The attractive force $A$ is split into $x$ and $y$ components, $A_x$ and $A_y$
     respectively. These forces are calculated as the following, where $O$ is the
-    amount the neighbour overlaps with the focal region:
+    amount the neighbour overlaps with the focal region, $D_N$ is the distance
+    from the neighbour to the focal region, $N_x$ is the $x$ position of the neighbour
+    and $M_x$ is the $x$ position of the focal region:
 
     $A_x = O_x \cdot (N_x - M_x) / D_N$
 
+    The $y$ force is calculated as the following, where $N_y$ and $M_y$ are the $y$
+    positions of the neighbour and focal regions, respectively:
+
     $A_y = O_y \cdot (N_y - M_y) / D_N$
 
-    The supplied $x$ and $y$ forces are updated by adding the new forces.
+    The supplied $x$ and $y$ forces are updated by summing with the new forces.
 
     ###**Parameters**
 
@@ -331,7 +340,7 @@ class Cartogram:
         # Get widest region
         widest = regions["radius"].max()
 
-        with alive_bar(iterations, title='Making Dorling Cartogram') as bar:
+        with alive_bar(iterations) as bar:
             for i in range(iterations):
                 # print(f"Starting Iteration: {i}")
                 bar()
