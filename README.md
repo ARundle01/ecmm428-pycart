@@ -48,6 +48,8 @@ This Repository requires:
 Further information about `pycart` can be found [here](https://ecmm428-pycart.readthedocs.io/en/latest/), 
 including further installation and dependency details, a quickstart guide and API reference.
 
+You can also read the research paper that accompanies this package [here](./ecmm428-pycart-a-library-for-cartogram-generation-in-python-with-acknowledgements.pdf).
+
 ### Key Dependencies
 To use `pycart`, you will need Python>=3.9, alongside the following 
 fixed version dependencies:
